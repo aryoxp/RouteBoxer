@@ -1,0 +1,263 @@
+package ap.mobile.routeboxerlib;
+
+import com.google.android.gms.maps.model.LatLng;
+import com.google.android.gms.maps.model.LatLngBounds;
+
+import java.util.ArrayList;
+
+/**
+ * Created by aryo on 29/1/16.
+ */
+public class RouteBoxer {
+
+    private final ArrayList<LatLng> route;
+    private final int distance;
+    private LatLngBounds bounds;
+    private IRouteBoxer iRouteBoxer;
+    private ArrayList<Box> boxes = new ArrayList<>();
+    private ArrayList<Box> routeBoxesH;
+    private ArrayList<Box> routeBoxesV;
+
+    public RouteBoxer(ArrayList<LatLng> route, int distance) {
+        this.route = route;
+        this.distance = distance;
+    }
+
+    public void setRouteBoxerInterface(IRouteBoxer iRouteBoxer) {
+        this.iRouteBoxer = iRouteBoxer;
+    }
+
+    public ArrayList<Box> box() {
+
+        double degree = distance / 1.1132 * 0.00001;
+
+        // Getting bounds
+
+        LatLngBounds.Builder builder = LatLngBounds.builder();
+        for (LatLng point : this.route) {
+            builder.include(point);
+        }
+
+        // Expanding bounds
+
+        this.bounds = builder.build();
+        LatLng southwest = new LatLng(this.bounds.southwest.latitude - degree,
+                this.bounds.southwest.longitude - degree);
+        LatLng northeast = new LatLng(this.bounds.northeast.latitude + degree,
+                this.bounds.northeast.longitude + degree);
+        this.bounds = builder.include(southwest).include(northeast).build();
+
+        if(this.iRouteBoxer != null)
+            this.iRouteBoxer.onBoundsObtained(this.bounds);
+
+        // Laying out grids
+
+        LatLng sw = this.bounds.southwest;
+        LatLng ne = new LatLng(sw.latitude + degree, sw.longitude + degree);
+        int x = 0, y = 0;
+        Box gridBox;
+
+        do {
+
+            do {
+                gridBox = new Box(sw, ne, x, y);
+                this.boxes.add(gridBox); //box.draw(mMap, Color.BLUE);
+                sw = new LatLng(sw.latitude, ne.longitude);
+                ne = new LatLng(sw.latitude + degree, sw.longitude + degree);
+                x++;
+            } while (gridBox.ne.longitude < this.bounds.northeast.longitude);
+
+            if (gridBox.ne.latitude < this.bounds.northeast.latitude) {
+                x = 0;
+                sw = new LatLng(sw.latitude + degree, this.bounds.southwest.longitude);
+                ne = new LatLng(sw.latitude + degree, sw.longitude + degree);
+            }
+            y++;
+
+        } while (gridBox.ne.latitude < this.bounds.northeast.latitude);
+
+
+        // Center the grids
+        // and converts to 2-D array
+
+        double latDif = boxes.get(boxes.size() - 1).ne.latitude - this.bounds.northeast.latitude;
+        double lngDif = boxes.get(boxes.size() - 1).ne.longitude - this.bounds.northeast.longitude;
+
+        Box boxArray[][] = new Box[x][y];
+        for (Box bx : boxes) {
+            bx.sw = new LatLng(bx.sw.latitude - (latDif / 2), bx.sw.longitude - (lngDif / 2));
+            bx.ne = new LatLng(bx.ne.latitude - (latDif / 2), bx.ne.longitude - (lngDif / 2));
+            boxArray[bx.x][bx.y] = bx;
+        }
+
+        if(this.iRouteBoxer != null)
+            this.iRouteBoxer.onGridObtained(boxArray);
+
+        // step 2: Traverse all points and mark grid which contains it.
+        this.traversePointsAndMarkGrids();
+
+        // step 3: Expand marked cells
+        boxArray = this.expandMarks(x, y, boxArray);
+        int length = boxArray.length;
+        Box[][] boxArrayCopy = new Box[length][boxArray[0].length];
+        for (int i = 0; i < length; i++) {
+            System.arraycopy(boxArray[i], 0, boxArrayCopy[i], 0, boxArray[i].length);
+        }
+
+        // step 4: Merge cells and generate boxes
+        // 1st Approach: merge cells horizontally
+        this.horizontalMerge(x, y, boxArray);
+
+        // 2nd Approach: Merge cells vertically
+        this.verticalMerge(x, y, boxArrayCopy);
+
+        // Step 5: return boxes with the least count from both approach
+        ArrayList<Box> boxes = (this.routeBoxesV.size() >= routeBoxesH.size()) ? this.routeBoxesH : this.routeBoxesV;
+        if(this.iRouteBoxer != null)
+            this.iRouteBoxer.onBoxesObtained(boxes);
+
+        return boxes;
+
+    }
+
+    private void traversePointsAndMarkGrids() {
+        for (LatLng point : this.route) {
+            for (Box bx : this.boxes) {
+                if (point.latitude > bx.sw.latitude
+                        && point.latitude < bx.ne.latitude
+                        && point.longitude > bx.sw.longitude
+                        && point.longitude < bx.ne.longitude)
+                    bx.mark();
+            }
+        }
+
+        if(this.iRouteBoxer != null)
+            this.iRouteBoxer.onGridMarked(this.boxes);
+
+    }
+
+    private Box[][] expandMarks(int x, int y, Box[][] boxArray) {
+        for(Box b:boxes) {
+            if(b.marked) {
+
+                // Mark all surrounding cells
+                boxArray[b.x-1][b.y-1].expandMark();    //.redraw(mMap, Color.BLACK, Color.GREEN);
+                boxArray[b.x-1][b.y].expandMark();      //.redraw(mMap, Color.BLACK, Color.GREEN);
+                boxArray[b.x-1][b.y+1].expandMark();    //.redraw(mMap, Color.BLACK, Color.GREEN);
+                boxArray[b.x][b.y+1].expandMark();      //.redraw(mMap, Color.BLACK, Color.GREEN);
+                boxArray[b.x+1][b.y+1].expandMark();    //.redraw(mMap, Color.BLACK, Color.GREEN);
+                boxArray[b.x+1][b.y].expandMark();      //.redraw(mMap, Color.BLACK, Color.GREEN);
+                boxArray[b.x+1][b.y-1].expandMark();    //.redraw(mMap, Color.BLACK, Color.GREEN);
+                boxArray[b.x][b.y-1].expandMark();      //.redraw(mMap, Color.BLACK, Color.GREEN);
+            }
+        }
+
+        if(this.iRouteBoxer != null)
+            this.iRouteBoxer.onGridMarksExpanded(boxArray);
+
+        return boxArray;
+    }
+
+    private void verticalMerge(int x, int y, Box[][] boxArray) {
+        ArrayList<Box> mergedBoxes = new ArrayList<>();
+        Box vBox = null;
+        for(int cx = 0; cx < x; cx++) {
+            for (int cy = 0; cy < y; cy++) {
+                Box b = new Box(boxArray[cx][cy].sw, boxArray[cx][cy].ne, cx, cy);
+                if(boxArray[cx][cy].marked || boxArray[cx][cy].expandMarked)
+                    b.mark();
+                if ((b.marked || b.expandMarked)) {
+                    if (vBox == null)
+                        vBox = b;
+                    else vBox.ne = b.ne;
+                    if(cy == y-1) {
+                        vBox.unexpandMark().unmark();
+                        mergedBoxes.add(vBox);
+                        vBox = null;
+                    }
+                } else {
+                    if(vBox != null) {
+                        vBox.unexpandMark().unmark();
+                        mergedBoxes.add(vBox);
+                        vBox = null;
+                    }
+                }
+            }
+        }
+
+        if(this.iRouteBoxer != null)
+            this.iRouteBoxer.onMergedVertically(mergedBoxes);
+
+        this.routeBoxesV = new ArrayList<>();
+        Box rBox = null;
+        for(int i = 0; i < mergedBoxes.size(); i++) {
+            Box bx = mergedBoxes.get(i);
+            if(bx.merged)
+                continue;
+            rBox = bx;
+            for (int j = i + 1; j < mergedBoxes.size(); j++) {
+                Box b = mergedBoxes.get(j);
+                if (b.sw.latitude == rBox.sw.latitude
+                        && b.ne.latitude == rBox.ne.latitude
+                        && b.sw.longitude == rBox.ne.longitude) {
+                    rBox.ne = b.ne;
+                    b.merged = true;
+                }
+            }
+            routeBoxesV.add(rBox);
+
+        }
+    }
+
+    private void horizontalMerge(int x, int y, Box[][] boxArray) {
+        ArrayList<Box> mergedBoxes = new ArrayList<>();
+        Box hBox = null;
+        for(int cy = 0; cy < y; cy++) {
+            for (int cx = 0; cx < x; cx++) {
+                Box b = new Box(boxArray[cx][cy].sw, boxArray[cx][cy].ne, cx, cy);
+                if(boxArray[cx][cy].marked || boxArray[cx][cy].expandMarked)
+                    b.mark();
+                if ((b.marked || b.expandMarked)) {
+                    if (hBox == null)
+                        hBox = b;
+                    else hBox.ne = b.ne;
+                    if(cx == x-1) {
+                        hBox.unexpandMark().unmark();
+                        mergedBoxes.add(hBox);
+                        hBox = null;
+                    }
+                } else {
+                    if(hBox != null) {
+                        hBox.unexpandMark().unmark();
+                        mergedBoxes.add(hBox);
+                        hBox = null;
+                    }
+                }
+            }
+        }
+
+        if (this.iRouteBoxer != null)
+            this.iRouteBoxer.onMergedHorizontally(mergedBoxes);
+
+        this.routeBoxesH = new ArrayList<>();
+        Box rBox = null;
+        for(int i = 0; i < mergedBoxes.size(); i++) {
+            Box bx = mergedBoxes.get(i);
+            if(bx.merged)
+                continue;
+            rBox = bx;
+            for (int j = i + 1; j < mergedBoxes.size(); j++) {
+                Box b = mergedBoxes.get(j);
+                if (b.sw.longitude == rBox.sw.longitude
+                        && b.sw.latitude == rBox.ne.latitude
+                        && b.ne.longitude == rBox.ne.longitude) {
+                    rBox.ne = b.ne;
+                    b.merged = true;
+                }
+            }
+            routeBoxesH.add(rBox);
+        }
+
+    }
+
+}

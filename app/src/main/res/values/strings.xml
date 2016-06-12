@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">RouteBoxer</string>
+    <string name="title_activity_maps">RouteBoxer</string>
+    <string name="settings">Settings</string>
+</resources>
