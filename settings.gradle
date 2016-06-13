@@ -1,1 +1,1 @@
-include ':app', ':restclient', ':routeboxerlib'
+include ':app', ':restclient', ':routeboxerlib', ':core', ':commons'

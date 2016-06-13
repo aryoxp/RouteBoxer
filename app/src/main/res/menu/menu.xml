@@ -8,4 +8,9 @@
         app:showAsAction="always"
         />
 
+    <item android:id="@+id/action_test"
+        android:icon="@drawable/ic_media_route_off_mono_dark"
+        android:title="Testing"
+        app:showAsAction="always" />
+
 </menu>

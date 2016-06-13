@@ -4,6 +4,7 @@ import android.os.AsyncTask;
 
 import com.google.android.gms.maps.model.LatLng;
 
+import java.io.IOException;
 import java.util.ArrayList;
 
 import ap.mobile.restclient.Rest;
@@ -38,6 +39,10 @@ public class RouteTask extends AsyncTask<Void, Void, ArrayList<LatLng>> {
     @Override
     protected void onPostExecute(ArrayList<LatLng> routes) {
         if (this.IMaps != null)
-            this.IMaps.onJSONRouteLoaded(routes);
+            try {
+                this.IMaps.onJSONRouteLoaded(routes);
+            } catch (IOException e) {
+
+            }
     }
 }

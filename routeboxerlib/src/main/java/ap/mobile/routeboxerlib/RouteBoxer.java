@@ -94,7 +94,7 @@ public class RouteBoxer {
             this.iRouteBoxer.onGridObtained(boxArray);
 
         // step 2: Traverse all points and mark grid which contains it.
-        this.traversePointsAndMarkGrids();
+        boxArray = this.traversePointsAndMarkGrids(boxArray);
 
         // step 3: Expand marked cells
         boxArray = this.expandMarks(x, y, boxArray);
@@ -120,19 +120,77 @@ public class RouteBoxer {
 
     }
 
-    private void traversePointsAndMarkGrids() {
+    private Box[][] traversePointsAndMarkGrids(Box[][] boxArray) {
+        int sizeX = boxArray.length;
+        int sizeY = boxArray[0].length;
+        Box lastBox = null;
         for (LatLng point : this.route) {
+            for(int x = 0; x < sizeX; x++) {
+                for (int y = 0; y < sizeY; y++) {
+                    Box bx = boxArray[x][y];
+                    if(bx.marked) continue;
+                    if (point.latitude > bx.sw.latitude
+                            && point.latitude < bx.ne.latitude
+                            && point.longitude > bx.sw.longitude
+                            && point.longitude < bx.ne.longitude) {
+                        bx.mark();
+                        if (lastBox == null)
+                            lastBox = bx;
+                        else {
+                            int lastX = lastBox.x;
+                            int lastY = lastBox.y;
+                            int diffX = bx.x - lastX;
+                            int diffY = bx.y - lastY;
+                            if(diffX < 1) {
+                                for(int dx = bx.x - diffX - 1; dx > bx.x; dx--)
+                                    boxArray[dx][lastBox.y].mark();
+                            }
+                            if(diffX > 1) {
+                                for(int dx = bx.x - diffX + 1; dx < bx.x; dx++)
+                                    boxArray[dx][lastBox.y].mark();
+                            }
+                            if(diffY < 1){
+                                for(int dy = bx.y - diffY - 1; dy > bx.y; dy--)
+                                    boxArray[lastBox.x][dy].mark();
+                            }
+                            if(diffY > 1) {
+                                for(int dy = bx.y - diffY + 1; dy < bx.y; dy++)
+                                    boxArray[lastBox.x][dy].mark();
+                            }
+                            lastBox = bx;
+                        }
+                    }
+                }
+            }
+            /*
             for (Box bx : this.boxes) {
+                if(bx.marked) continue;
                 if (point.latitude > bx.sw.latitude
                         && point.latitude < bx.ne.latitude
                         && point.longitude > bx.sw.longitude
-                        && point.longitude < bx.ne.longitude)
+                        && point.longitude < bx.ne.longitude) {
                     bx.mark();
+                    if (lastBox == null)
+                        lastBox = bx;
+                    else {
+                        int lastX = lastBox.x;
+                        int lastY = lastBox.y;
+                        int diffX = bx.x - lastX;
+                        if(Math.abs(diffX) > 0) {
+                            for(int x = bx.x - diffX - 1; x > bx.x; x--)
+                                boxArray[x][lastBox.y].mark();
+                        }
+                        lastBox = bx;
+                    }
+                }
             }
+            */
         }
 
         if(this.iRouteBoxer != null)
             this.iRouteBoxer.onGridMarked(this.boxes);
+
+        return boxArray;
 
     }
 
@@ -258,6 +316,14 @@ public class RouteBoxer {
             routeBoxesH.add(rBox);
         }
 
+    }
+
+    public ArrayList<Box> getRouteBoxesH() {
+        return this.routeBoxesH;
+    }
+
+    public ArrayList<Box> getRouteBoxesV() {
+        return this.routeBoxesV;
     }
 
 }

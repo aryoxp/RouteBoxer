@@ -49,7 +49,9 @@ public class RouteBoxerTask extends AsyncTask<Void, ArrayList<Box>, ArrayList<Bo
     public void onGridObtained(Box[][] boxArray) {}
 
     @Override
-    public void onGridMarked(ArrayList<Box> boxes) {}
+    public void onGridMarked(ArrayList<Box> boxes) {
+        //publishProgress(boxes);
+    }
 
     @Override
     public void onGridMarksExpanded(Box[][] boxArray) {}

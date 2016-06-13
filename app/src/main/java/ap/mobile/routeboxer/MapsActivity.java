@@ -2,15 +2,19 @@ package ap.mobile.routeboxer;
 
 import android.app.AlertDialog;
 import android.content.DialogInterface;
+import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.location.Location;
 import android.os.AsyncTask;
 import android.os.Bundle;
+import android.os.Handler;
+import android.support.v4.app.ActivityCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
 import android.view.Menu;
 import android.view.MenuItem;
 
+import com.afollestad.materialdialogs.MaterialDialog;
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.api.GoogleApiClient;
 import com.google.android.gms.location.LocationServices;
@@ -29,8 +33,11 @@ import com.google.android.gms.maps.model.PolygonOptions;
 import com.google.android.gms.maps.model.Polyline;
 import com.google.android.gms.maps.model.PolylineOptions;
 
+import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Random;
 
+import ap.mobile.routeboxer.helper.FileHelper;
 import ap.mobile.routeboxerlib.Box;
 
 public class MapsActivity extends AppCompatActivity
@@ -39,7 +46,7 @@ public class MapsActivity extends AppCompatActivity
         GoogleApiClient.OnConnectionFailedListener,
         GoogleMap.OnMapLongClickListener,
         GoogleMap.OnInfoWindowClickListener,
-        DialogInterface.OnClickListener {
+        DialogInterface.OnClickListener, TestTask.TestInterface {
 
     private Toolbar myToolbar;
     private GoogleMap mMap;
@@ -57,6 +64,8 @@ public class MapsActivity extends AppCompatActivity
     private ArrayList<Polygon> boxPolygons;
     private DistanceDialog dialog;
     private float defaultZoom = 13;
+    private TestingDialog testDialog;
+    private MaterialDialog myTestDialog;
 
 
     @Override
@@ -106,6 +115,17 @@ public class MapsActivity extends AppCompatActivity
     public void onMapReady(GoogleMap googleMap) {
 
         this.mMap = googleMap;
+        if (ActivityCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            // TODO: Consider calling
+            //    ActivityCompat#requestPermissions
+            // here to request the missing permissions, and then overriding
+            //   public void onRequestPermissionsResult(int requestCode, String[] permissions,
+            //                                          int[] grantResults)
+            // to handle the case where the user grants the permission. See the documentation
+            // for ActivityCompat#requestPermissions for more details.
+            ActivityCompat.requestPermissions(this, new String[] {android.Manifest.permission.ACCESS_FINE_LOCATION}, 99);
+            return;
+        }
         this.mMap.setMyLocationEnabled(true);
         this.mMap.setOnMapLongClickListener(this);
         this.mMap.setOnInfoWindowClickListener(this);
@@ -149,15 +169,15 @@ public class MapsActivity extends AppCompatActivity
         PolylineOptions polylineOptions = new PolylineOptions()
                 .color(Color.RED)
                 .width(5);
-        for(LatLng point: route)
+        for (LatLng point : route)
             polylineOptions.add(point);
-        if(this.routePolyline != null)
+        if (this.routePolyline != null)
             this.routePolyline.remove();
         this.routePolyline = this.mMap.addPolyline(polylineOptions);
-        if(this.boxPolygons == null)
+        if (this.boxPolygons == null)
             this.boxPolygons = new ArrayList<>();
         else {
-            for(Polygon polygon: this.boxPolygons) {
+            for (Polygon polygon : this.boxPolygons) {
                 polygon.remove();
             }
         }
@@ -175,7 +195,7 @@ public class MapsActivity extends AppCompatActivity
     }
 
     private void draw(ArrayList<Box> boxes, int color, int fillColor) {
-        for(Box box: boxes) {
+        for (Box box : boxes) {
             LatLng nw = new LatLng(box.ne.latitude, box.sw.longitude);
             LatLng se = new LatLng(box.sw.latitude, box.ne.longitude);
 
@@ -198,8 +218,21 @@ public class MapsActivity extends AppCompatActivity
 
     @Override
     public void onConnected(Bundle bundle) {
+        if (ActivityCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            // TODO: Consider calling
+            //    ActivityCompat#requestPermissions
+            // here to request the missing permissions, and then overriding
+            //   public void onRequestPermissionsResult(int requestCode, String[] permissions,
+            //                                          int[] grantResults)
+            // to handle the case where the user grants the permission. See the documentation
+            // for ActivityCompat#requestPermissions for more details.
+            ActivityCompat.requestPermissions(this, new String[] {android.Manifest.permission.ACCESS_FINE_LOCATION}, 99);
+            return;
+        }
         Location location = LocationServices.FusedLocationApi.getLastLocation(this.mGoogleApiClient);
         this.origin = new LatLng(location.getLatitude(), location.getLongitude());
+        //origin = new LatLng(38.595900, -89.985198);
+        origin = new LatLng(38.506380, -89.968063);
         if (this.origin == null)
             new AlertDialog.Builder(this)
                     .setTitle("Warning")
@@ -248,11 +281,29 @@ public class MapsActivity extends AppCompatActivity
     @Override
     public void onInfoWindowClick(Marker marker) {
         if(this.origin != null && this.destination != null) {
+            //origin = new LatLng(38.595900, -89.985198);
+            //destination = new LatLng(38.506360, -89.984318);
+            destination = new LatLng(38.506380, -89.968063);
+            origin = new LatLng(38.504700, -89.851810);
             RouteTask routeTask = new RouteTask(this, origin, destination);
             if (routeTask.getStatus() == AsyncTask.Status.PENDING)
                 routeTask.execute();
         }
     }
+
+    int bpNum = 3;
+    android.os.Handler handler = new Handler();
+
+    Runnable waitRunnable = new Runnable() {
+        @Override
+        public void run() {
+            if(bpNum == 0) {
+                if(MapsActivity.this.testDialog != null)
+                    MapsActivity.this.testDialog.dismiss();
+            }
+            else handler.postDelayed(this, 500);
+        }
+    };
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
@@ -262,6 +313,129 @@ public class MapsActivity extends AppCompatActivity
                 this.dialog = new DistanceDialog();
                 this.dialog.setDistance(this.distance);
                 this.dialog.show(this.getSupportFragmentManager(), "distanceDialog");
+
+                return true;
+
+            case R.id.action_test:
+
+
+
+                this.testDialog = new TestingDialog();
+                this.testDialog.show(this.getSupportFragmentManager(), "testingDialog");
+
+                this.testDialog.text("Getting path...");
+                handler.postDelayed(waitRunnable, 1);
+                bpNum = 0;
+
+
+                IMaps vIMaps = new IMaps() {
+                    @Override
+                    public void onJSONRouteLoaded(ArrayList<LatLng> route) throws IOException {
+                        StringBuilder sb = new StringBuilder();
+                        for(LatLng pos: route)
+                            sb.append(pos.latitude + ";" + pos.longitude + "\n");
+                        FileHelper.write(MapsActivity.this, "path-v.txt", sb.toString(), true);
+                        bpNum--;
+                    }
+                };
+
+                IMaps hIMaps = new IMaps() {
+                    @Override
+                    public void onJSONRouteLoaded(ArrayList<LatLng> route) throws IOException {
+                        StringBuilder sb = new StringBuilder();
+                        for(LatLng pos: route)
+                            sb.append(pos.latitude + ";" + pos.longitude + "\n");
+                        FileHelper.write(MapsActivity.this, "path-h.txt", sb.toString(), true);
+                        bpNum--;
+                    }
+
+
+                };
+
+                IMaps dIMaps = new IMaps() {
+                    @Override
+                    public void onJSONRouteLoaded(ArrayList<LatLng> route) throws IOException {
+                        StringBuilder sb = new StringBuilder();
+                        for(LatLng pos: route)
+                            sb.append(pos.latitude + ";" + pos.longitude + "\n");
+                        FileHelper.write(MapsActivity.this, "path-d.txt", sb.toString(), true);
+                        bpNum--;
+                    }
+                };
+                try {
+
+                    boolean reroute = false;
+                    if(bpNum > 0) reroute = true;
+
+                    if (!FileHelper.exists(this, "path-v.txt") || reroute) {
+                        LatLng vStart = new LatLng(38.595900, -89.985198);
+                        LatLng vEnd = new LatLng(38.506360, -89.984318);
+                        RouteTask vRouteTask = new RouteTask(vIMaps, vStart, vEnd);
+                        vRouteTask.execute();
+                    }
+
+                    if (!FileHelper.exists(this, "path-h.txt") || reroute) {
+                        LatLng hStart = new LatLng(38.506380, -89.968063);
+                        LatLng hEnd = new LatLng(38.504700, -89.851810);
+                        RouteTask hRouteTask = new RouteTask(hIMaps, hStart, hEnd);
+                        hRouteTask.execute();
+                    }
+
+                    if (!FileHelper.exists(this, "path-d.txt") || reroute) {
+                        LatLng dStart = new LatLng(38.621889, -90.153827);
+                        LatLng dEnd = new LatLng(38.555006, -90.077097);
+                        RouteTask dRouteTask = new RouteTask(dIMaps, dStart, dEnd);
+                        dRouteTask.execute();
+                    }
+
+
+                    String vRaw = FileHelper.read(this, "path-v.txt").trim();
+                    String[] pairs = vRaw.split("\n");
+                    ArrayList<LatLng> points = new ArrayList<>();
+                    for(String data: pairs) {
+                        String[] cols = data.split(";");
+                        LatLng point = new LatLng(Double.parseDouble(cols[0]), Double.parseDouble(cols[1]));
+                        points.add(point);
+                    }
+
+                    while(points.size() > 100)
+                        points.remove((new Random()).nextInt((points.size()-2))+1);
+
+                    String hRaw = FileHelper.read(this, "path-h.txt").trim();
+                    String[] hPairs = hRaw.split("\n");
+                    ArrayList<LatLng> hPoints = new ArrayList<>();
+                    for(String data: hPairs) {
+                        String[] cols = data.split(";");
+                        LatLng point = new LatLng(Double.parseDouble(cols[0]), Double.parseDouble(cols[1]));
+                        hPoints.add(point);
+                    }
+
+                    while(hPoints.size() > 100)
+                        hPoints.remove((new Random()).nextInt((hPoints.size()-2))+1);
+
+                    String dRaw = FileHelper.read(this, "path-d.txt").trim();
+                    String[] vPairs = dRaw.split("\n");
+                    ArrayList<LatLng> dPoints = new ArrayList<>();
+                    for(String data: vPairs) {
+                        String[] cols = data.split(";");
+                        LatLng point = new LatLng(Double.parseDouble(cols[0]), Double.parseDouble(cols[1]));
+                        dPoints.add(point);
+                    }
+
+                    while(dPoints.size() > 100)
+                        dPoints.remove((new Random()).nextInt((dPoints.size()-2))+1);
+
+
+                    TestTask testTask = new TestTask(this, points, dPoints, hPoints);
+                    testTask.setStatusInterface(this);
+                    testTask.execute();
+
+
+                } catch (Exception ex) {
+                    this.testDialog.text(ex.getMessage());
+                }
+                //this.testDialog.dismiss();
+
 
                 return true;
         }
@@ -284,5 +458,27 @@ public class MapsActivity extends AppCompatActivity
                 dialog.dismiss();
                 break;
         }
+    }
+
+    @Override
+    public void start() {
+        this.myTestDialog = new MaterialDialog.Builder(this).content("Loading...")
+                .cancelable(false)
+                .show();
+    }
+
+    @Override
+    public void showStatus(String status) {
+        this.myTestDialog.setContent(status);
+    }
+
+    @Override
+    public void showError(String error) {
+        this.myTestDialog.setContent(error);
+    }
+
+    @Override
+    public void done() {
+        this.myTestDialog.dismiss();
     }
 }

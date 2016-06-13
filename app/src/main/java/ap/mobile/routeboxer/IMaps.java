@@ -2,6 +2,7 @@ package ap.mobile.routeboxer;
 
 import com.google.android.gms.maps.model.LatLng;
 
+import java.io.IOException;
 import java.util.ArrayList;
 
 /**
@@ -9,6 +10,6 @@ import java.util.ArrayList;
  */
 public interface IMaps {
 
-    void onJSONRouteLoaded(ArrayList<LatLng> route);
+    void onJSONRouteLoaded(ArrayList<LatLng> route) throws IOException;
 
 }
