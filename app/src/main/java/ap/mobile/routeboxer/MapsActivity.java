@@ -66,6 +66,7 @@ public class MapsActivity extends AppCompatActivity
     private float defaultZoom = 13;
     private TestingDialog testDialog;
     private MaterialDialog myTestDialog;
+    private MaterialDialog routeBoxProcessDialog;
 
 
     @Override
@@ -168,7 +169,7 @@ public class MapsActivity extends AppCompatActivity
         routeBoxerTask.execute();
         PolylineOptions polylineOptions = new PolylineOptions()
                 .color(Color.RED)
-                .width(5);
+                .width(8);
         for (LatLng point : route)
             polylineOptions.add(point);
         if (this.routePolyline != null)
@@ -187,14 +188,37 @@ public class MapsActivity extends AppCompatActivity
     @Override
     public void onRouteBoxerTaskComplete(ArrayList<Box> boxes) {
         this.draw(boxes, Color.GRAY, Color.argb(15, 255, 0, 0));
+        if(this.routeBoxProcessDialog != null && this.routeBoxProcessDialog.isShowing())
+            this.routeBoxProcessDialog.dismiss();
     }
 
     @Override
-    public void onRouteBoxerBoxPublished(ArrayList<Box> boxes) {
-        this.draw(boxes, Color.GRAY, Color.argb(128, 255, 0, 0));
+    public void onRouteBoxerBoxPublished(ArrayList<Box> boxes, int step)
+    {
+        switch (step) {
+            case 1:
+            case 2:
+            case 3:
+                this.draw(boxes, Color.GRAY, Color.TRANSPARENT);
+                break;
+            case 5:
+            case 6:
+            case 7:
+            case 8:
+                this.draw(boxes, Color.DKGRAY, Color.TRANSPARENT);
+                break;
+            default:
+                this.draw(boxes, Color.GRAY, Color.argb(128, 255, 0, 0));
+                break;
+        }
     }
 
     private void draw(ArrayList<Box> boxes, int color, int fillColor) {
+
+        if(this.boxPolygons == null)
+            this.boxPolygons = new ArrayList<>();
+        else this.boxPolygons.clear();
+
         for (Box box : boxes) {
             LatLng nw = new LatLng(box.ne.latitude, box.sw.longitude);
             LatLng se = new LatLng(box.sw.latitude, box.ne.longitude);
@@ -202,18 +226,20 @@ public class MapsActivity extends AppCompatActivity
             PolygonOptions polygonOptions = new PolygonOptions()
                     .add(box.sw, nw, box.ne, se, box.sw)
                     .strokeColor(color)
-                    .strokeWidth(3);
+                    .strokeWidth(5);
             if (box.marked) {
-                polygonOptions.strokeColor(Color.RED)
-                        .fillColor(Color.YELLOW);
+                polygonOptions.strokeColor(Color.DKGRAY)
+                        .fillColor(Color.argb(96, 0, 0, 0));
             } else if (box.expandMarked) {
-                polygonOptions.strokeColor(Color.BLUE)
-                        .fillColor(Color.GREEN);
+                polygonOptions.strokeColor(Color.DKGRAY)
+                        .fillColor(Color.argb(72, 0, 0, 0));
             } else
                 polygonOptions.fillColor(fillColor);
             Polygon boxPolygon = mMap.addPolygon(polygonOptions);
             this.boxPolygons.add(boxPolygon);
         }
+
+        return;
     }
 
     @Override
@@ -232,7 +258,8 @@ public class MapsActivity extends AppCompatActivity
         Location location = LocationServices.FusedLocationApi.getLastLocation(this.mGoogleApiClient);
         this.origin = new LatLng(location.getLatitude(), location.getLongitude());
         //origin = new LatLng(38.595900, -89.985198);
-        origin = new LatLng(38.506380, -89.968063);
+        //origin = new LatLng(38.506380, -89.968063);
+
         if (this.origin == null)
             new AlertDialog.Builder(this)
                     .setTitle("Warning")
@@ -265,16 +292,25 @@ public class MapsActivity extends AppCompatActivity
     @Override
     public void onMapLongClick(LatLng destination) {
 
+        this.destination = destination;
+        //this.destination = new LatLng(-7.953037137608645,112.63877917081118);
+        //this.origin = new LatLng(-7.9545055,112.6148412);
+
+        //this.destination = new LatLng(-7.982594952681266,112.63102859258652);
+        //this.origin = new LatLng(-7.9520931,112.6126944);
+
         MarkerOptions destinationMarkerOptions = new MarkerOptions()
                 .title("Destination")
-                .position(destination)
+                .position(this.destination)
                 .snippet("Click to route box from your location.");
+
+
 
         if(this.destinationMarker != null)
             this.destinationMarker.remove();
         this.destinationMarker = this.mMap.addMarker(destinationMarkerOptions);
         this.destinationMarker.showInfoWindow();
-        this.destination = destination;
+
 
     }
 
@@ -283,11 +319,22 @@ public class MapsActivity extends AppCompatActivity
         if(this.origin != null && this.destination != null) {
             //origin = new LatLng(38.595900, -89.985198);
             //destination = new LatLng(38.506360, -89.984318);
-            destination = new LatLng(38.506380, -89.968063);
-            origin = new LatLng(38.504700, -89.851810);
-            RouteTask routeTask = new RouteTask(this, origin, destination);
+            //destination = new LatLng(38.506380, -89.968063);
+            //origin = new LatLng(38.504700, -89.851810);
+
+            //this.origin = new LatLng(-7.9544773,112.6148372);
+            //this.destination = new LatLng(-7.953271897865304,112.63915132731199);
+
+            RouteTask routeTask = new RouteTask(this, this.origin, this.destination);
             if (routeTask.getStatus() == AsyncTask.Status.PENDING)
                 routeTask.execute();
+
+            this.routeBoxProcessDialog = new MaterialDialog.Builder(this)
+                    .cancelable(false)
+                    .content("Obtaining boxes...")
+                    .progressIndeterminateStyle(true)
+                    .show();
+
         }
     }
 

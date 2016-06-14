@@ -10,5 +10,5 @@ import ap.mobile.routeboxerlib.Box;
 public interface IRouteBoxerTask {
 
     void onRouteBoxerTaskComplete(ArrayList<Box> boxes);
-    void onRouteBoxerBoxPublished(ArrayList<Box> boxes);
+    void onRouteBoxerBoxPublished(ArrayList<Box> boxes, int step);
 }

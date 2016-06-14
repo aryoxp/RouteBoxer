@@ -27,6 +27,11 @@ public class RouteBoxer {
         this.iRouteBoxer = iRouteBoxer;
     }
 
+    public static ArrayList<Box> box(Route route, int distance) {
+        RouteBoxer routeBoxer = new RouteBoxer(route.getRoute(), distance);
+        return routeBoxer.box();
+    }
+
     public ArrayList<Box> box() {
 
         double degree = distance / 1.1132 * 0.00001;
@@ -91,7 +96,7 @@ public class RouteBoxer {
         }
 
         if(this.iRouteBoxer != null)
-            this.iRouteBoxer.onGridObtained(boxArray);
+            this.iRouteBoxer.onGridObtained(boxArray, boxes);
 
         // step 2: Traverse all points and mark grid which contains it.
         boxArray = this.traversePointsAndMarkGrids(boxArray);
@@ -162,29 +167,6 @@ public class RouteBoxer {
                     }
                 }
             }
-            /*
-            for (Box bx : this.boxes) {
-                if(bx.marked) continue;
-                if (point.latitude > bx.sw.latitude
-                        && point.latitude < bx.ne.latitude
-                        && point.longitude > bx.sw.longitude
-                        && point.longitude < bx.ne.longitude) {
-                    bx.mark();
-                    if (lastBox == null)
-                        lastBox = bx;
-                    else {
-                        int lastX = lastBox.x;
-                        int lastY = lastBox.y;
-                        int diffX = bx.x - lastX;
-                        if(Math.abs(diffX) > 0) {
-                            for(int x = bx.x - diffX - 1; x > bx.x; x--)
-                                boxArray[x][lastBox.y].mark();
-                        }
-                        lastBox = bx;
-                    }
-                }
-            }
-            */
         }
 
         if(this.iRouteBoxer != null)
@@ -211,7 +193,7 @@ public class RouteBoxer {
         }
 
         if(this.iRouteBoxer != null)
-            this.iRouteBoxer.onGridMarksExpanded(boxArray);
+            this.iRouteBoxer.onGridMarksExpanded(boxArray, this.boxes);
 
         return boxArray;
     }
@@ -244,7 +226,9 @@ public class RouteBoxer {
         }
 
         if(this.iRouteBoxer != null)
-            this.iRouteBoxer.onMergedVertically(mergedBoxes);
+            this.iRouteBoxer.onMergedAdjointVertically(mergedBoxes);
+
+
 
         this.routeBoxesV = new ArrayList<>();
         Box rBox = null;
@@ -265,6 +249,9 @@ public class RouteBoxer {
             routeBoxesV.add(rBox);
 
         }
+
+        if(this.iRouteBoxer != null)
+            this.iRouteBoxer.onMergedVertically(routeBoxesV);
     }
 
     private void horizontalMerge(int x, int y, Box[][] boxArray) {
@@ -294,8 +281,8 @@ public class RouteBoxer {
             }
         }
 
-        if (this.iRouteBoxer != null)
-            this.iRouteBoxer.onMergedHorizontally(mergedBoxes);
+        if(this.iRouteBoxer != null)
+            this.iRouteBoxer.onMergedAdjointHorizontally(mergedBoxes);
 
         this.routeBoxesH = new ArrayList<>();
         Box rBox = null;
@@ -316,14 +303,31 @@ public class RouteBoxer {
             routeBoxesH.add(rBox);
         }
 
+        if (this.iRouteBoxer != null)
+            this.iRouteBoxer.onMergedHorizontally(routeBoxesH);
     }
 
     public ArrayList<Box> getRouteBoxesH() {
         return this.routeBoxesH;
     }
-
     public ArrayList<Box> getRouteBoxesV() {
         return this.routeBoxesV;
     }
 
+    /**
+     * Created by aryo on 30/1/16.
+     */
+    public static interface IRouteBoxer {
+
+        void onBoxesObtained(ArrayList<Box> boxes);
+        void onBoundsObtained(LatLngBounds bounds);
+        void onGridObtained(Box[][] boxArray, ArrayList<Box> boxes);
+        void onGridMarked(ArrayList<Box> boxes);
+        void onGridMarksExpanded(Box[][] boxArray, ArrayList<Box> boxes);
+        void onMergedAdjointVertically(ArrayList<Box> boxes);
+        void onMergedAdjointHorizontally(ArrayList<Box> boxes);
+        void onMergedVertically(ArrayList<Box> mergedBoxes);
+        void onMergedHorizontally(ArrayList<Box> mergedBoxes);
+
+    }
 }
