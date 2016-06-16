@@ -213,6 +213,12 @@ public class MapsActivity extends AppCompatActivity
         }
     }
 
+    @Override
+    public void onMessage(String message) {
+        if(this.routeBoxProcessDialog != null && this.routeBoxProcessDialog.isShowing())
+            this.routeBoxProcessDialog.setContent(message);
+    }
+
     private void draw(ArrayList<Box> boxes, int color, int fillColor) {
 
         if(this.boxPolygons == null)
@@ -332,6 +338,7 @@ public class MapsActivity extends AppCompatActivity
             this.routeBoxProcessDialog = new MaterialDialog.Builder(this)
                     .cancelable(false)
                     .content("Obtaining boxes...")
+                    .progress(true, 0)
                     .progressIndeterminateStyle(true)
                     .show();
 

@@ -34,14 +34,24 @@ public class RouteBoxer {
 
     public ArrayList<Box> box() {
 
+        if(this.iRouteBoxer != null)
+            this.iRouteBoxer.onProcess("Initializing...", null);
+
+
         double degree = distance / 1.1132 * 0.00001;
 
         // Getting bounds
+
+        if(this.iRouteBoxer != null)
+            this.iRouteBoxer.onProcess("Calculating bounds...", null);
 
         LatLngBounds.Builder builder = LatLngBounds.builder();
         for (LatLng point : this.route) {
             builder.include(point);
         }
+
+        if(this.iRouteBoxer != null)
+            this.iRouteBoxer.onProcess("Expanding bounds...", null);
 
         // Expanding bounds
 
@@ -52,10 +62,15 @@ public class RouteBoxer {
                 this.bounds.northeast.longitude + degree);
         this.bounds = builder.include(southwest).include(northeast).build();
 
-        if(this.iRouteBoxer != null)
+        if(this.iRouteBoxer != null) {
+            this.iRouteBoxer.onProcess("Bounds obtained...", null);
             this.iRouteBoxer.onBoundsObtained(this.bounds);
+        }
 
         // Laying out grids
+
+        if(this.iRouteBoxer != null)
+            this.iRouteBoxer.onProcess("Overlaying grid...", null);
 
         LatLng sw = this.bounds.southwest;
         LatLng ne = new LatLng(sw.latitude + degree, sw.longitude + degree);
@@ -85,6 +100,9 @@ public class RouteBoxer {
         // Center the grids
         // and converts to 2-D array
 
+        if(this.iRouteBoxer != null)
+            this.iRouteBoxer.onProcess("Overlaying grid...", null);
+
         double latDif = boxes.get(boxes.size() - 1).ne.latitude - this.bounds.northeast.latitude;
         double lngDif = boxes.get(boxes.size() - 1).ne.longitude - this.bounds.northeast.longitude;
 
@@ -95,27 +113,43 @@ public class RouteBoxer {
             boxArray[bx.x][bx.y] = bx;
         }
 
-        if(this.iRouteBoxer != null)
+        if(this.iRouteBoxer != null) {
             this.iRouteBoxer.onGridObtained(boxArray, boxes);
+            this.iRouteBoxer.onProcess("Traversing...", null);
+        }
 
         // step 2: Traverse all points and mark grid which contains it.
         boxArray = this.traversePointsAndMarkGrids(boxArray);
 
+        if(this.iRouteBoxer != null)
+            this.iRouteBoxer.onProcess("Expanding cell marks...", null);
+
         // step 3: Expand marked cells
         boxArray = this.expandMarks(x, y, boxArray);
+
+
+        if(this.iRouteBoxer != null)
+            this.iRouteBoxer.onProcess("Duplicating array...", null);
+
         int length = boxArray.length;
         Box[][] boxArrayCopy = new Box[length][boxArray[0].length];
         for (int i = 0; i < length; i++) {
             System.arraycopy(boxArray[i], 0, boxArrayCopy[i], 0, boxArray[i].length);
         }
 
+        if(this.iRouteBoxer != null)
+            this.iRouteBoxer.onProcess("Merging horizontally...", null);
         // step 4: Merge cells and generate boxes
         // 1st Approach: merge cells horizontally
         this.horizontalMerge(x, y, boxArray);
 
+        if(this.iRouteBoxer != null)
+            this.iRouteBoxer.onProcess("Merging vertically...", null);
         // 2nd Approach: Merge cells vertically
         this.verticalMerge(x, y, boxArrayCopy);
 
+        if(this.iRouteBoxer != null)
+            this.iRouteBoxer.onProcess("Obtaining results...", null);
         // Step 5: return boxes with the least count from both approach
         ArrayList<Box> boxes = (this.routeBoxesV.size() >= routeBoxesH.size()) ? this.routeBoxesH : this.routeBoxesV;
         if(this.iRouteBoxer != null)
@@ -169,8 +203,10 @@ public class RouteBoxer {
             }
         }
 
-        if(this.iRouteBoxer != null)
+        if(this.iRouteBoxer != null) {
+            this.iRouteBoxer.onProcess("Traversing and marking complete...", null);
             this.iRouteBoxer.onGridMarked(this.boxes);
+        }
 
         return boxArray;
 
@@ -192,8 +228,10 @@ public class RouteBoxer {
             }
         }
 
-        if(this.iRouteBoxer != null)
+        if(this.iRouteBoxer != null) {
+            this.iRouteBoxer.onProcess("Cell marks expanded", null);
             this.iRouteBoxer.onGridMarksExpanded(boxArray, this.boxes);
+        }
 
         return boxArray;
     }
@@ -225,8 +263,10 @@ public class RouteBoxer {
             }
         }
 
-        if(this.iRouteBoxer != null)
+        if(this.iRouteBoxer != null) {
+            this.iRouteBoxer.onProcess("Adjoint cells merged.", null);
             this.iRouteBoxer.onMergedAdjointVertically(mergedBoxes);
+        }
 
 
 
@@ -250,8 +290,10 @@ public class RouteBoxer {
 
         }
 
-        if(this.iRouteBoxer != null)
+        if(this.iRouteBoxer != null) {
+            this.iRouteBoxer.onProcess("Adjoint boxes merged.", null);
             this.iRouteBoxer.onMergedVertically(routeBoxesV);
+        }
     }
 
     private void horizontalMerge(int x, int y, Box[][] boxArray) {
@@ -281,8 +323,10 @@ public class RouteBoxer {
             }
         }
 
-        if(this.iRouteBoxer != null)
+        if(this.iRouteBoxer != null) {
+            this.iRouteBoxer.onProcess("Adjoint cells merged.", null);
             this.iRouteBoxer.onMergedAdjointHorizontally(mergedBoxes);
+        }
 
         this.routeBoxesH = new ArrayList<>();
         Box rBox = null;
@@ -303,8 +347,10 @@ public class RouteBoxer {
             routeBoxesH.add(rBox);
         }
 
-        if (this.iRouteBoxer != null)
+        if (this.iRouteBoxer != null) {
+            this.iRouteBoxer.onProcess("Adjoint boxes merged.", null);
             this.iRouteBoxer.onMergedHorizontally(routeBoxesH);
+        }
     }
 
     public ArrayList<Box> getRouteBoxesH() {
@@ -328,6 +374,9 @@ public class RouteBoxer {
         void onMergedAdjointHorizontally(ArrayList<Box> boxes);
         void onMergedVertically(ArrayList<Box> mergedBoxes);
         void onMergedHorizontally(ArrayList<Box> mergedBoxes);
-
+        void onProcess(String processInfo, ArrayList<Box> boxes);
     }
+
+
+
 }
