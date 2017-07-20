@@ -38,7 +38,7 @@ import java.util.ArrayList;
 import java.util.Random;
 
 import ap.mobile.routeboxer.helper.FileHelper;
-import ap.mobile.routeboxerlib.Box;
+import ap.mobile.routeboxerlib.RouteBoxer;
 
 public class MapsActivity extends AppCompatActivity
         implements OnMapReadyCallback, IMaps, IRouteBoxerTask,
@@ -60,7 +60,7 @@ public class MapsActivity extends AppCompatActivity
     private Marker destinationMarker;
     private LatLng destination;
     private LatLng origin;
-    private ArrayList<Box> boxes;
+    private ArrayList<RouteBoxer.Box> boxes;
     private ArrayList<Polygon> boxPolygons;
     private DistanceDialog dialog;
     private float defaultZoom = 13;
@@ -186,14 +186,14 @@ public class MapsActivity extends AppCompatActivity
 
 
     @Override
-    public void onRouteBoxerTaskComplete(ArrayList<Box> boxes) {
+    public void onRouteBoxerTaskComplete(ArrayList<RouteBoxer.Box> boxes) {
         this.draw(boxes, Color.GRAY, Color.argb(15, 255, 0, 0));
         if(this.routeBoxProcessDialog != null && this.routeBoxProcessDialog.isShowing())
             this.routeBoxProcessDialog.dismiss();
     }
 
     @Override
-    public void onRouteBoxerBoxPublished(ArrayList<Box> boxes, int step)
+    public void onRouteBoxerBoxPublished(ArrayList<RouteBoxer.Box> boxes, int step)
     {
         switch (step) {
             case 1:
@@ -219,13 +219,13 @@ public class MapsActivity extends AppCompatActivity
             this.routeBoxProcessDialog.setContent(message);
     }
 
-    private void draw(ArrayList<Box> boxes, int color, int fillColor) {
+    private void draw(ArrayList<RouteBoxer.Box> boxes, int color, int fillColor) {
 
         if(this.boxPolygons == null)
             this.boxPolygons = new ArrayList<>();
         else this.boxPolygons.clear();
 
-        for (Box box : boxes) {
+        for (RouteBoxer.Box box : boxes) {
             LatLng nw = new LatLng(box.ne.latitude, box.sw.longitude);
             LatLng se = new LatLng(box.sw.latitude, box.ne.longitude);
 

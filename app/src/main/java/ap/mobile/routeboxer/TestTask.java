@@ -9,7 +9,6 @@ import com.google.android.gms.maps.model.LatLng;
 import java.util.ArrayList;
 
 import ap.mobile.routeboxer.helper.FileHelper;
-import ap.mobile.routeboxerlib.Box;
 import ap.mobile.routeboxerlib.RouteBoxer;
 
 /**
@@ -58,7 +57,7 @@ public class TestTask extends AsyncTask<Void, String, Void> {
             ArrayList<LatLng> sublist = new ArrayList<>(points.subList(0, arraySize));
             RouteBoxer rb = new RouteBoxer(sublist, distance);
             double start = System.nanoTime();
-            ArrayList<Box> boxes = rb.box();
+            ArrayList<RouteBoxer.Box> boxes = rb.box();
             double time = System.nanoTime() - start;
             int size = boxes.size();
             int sizeH = rb.getRouteBoxesH().size();
@@ -87,7 +86,7 @@ public class TestTask extends AsyncTask<Void, String, Void> {
             ArrayList<LatLng> sublist = new ArrayList<>(dPoints.subList(0, arraySize));
             RouteBoxer rb = new RouteBoxer(sublist, distance);
             double start = System.nanoTime();
-            ArrayList<Box> boxes = rb.box();
+            ArrayList<RouteBoxer.Box> boxes = rb.box();
             double time = System.nanoTime() - start;
             int size = boxes.size();
             int sizeH = rb.getRouteBoxesH().size();
@@ -116,7 +115,7 @@ public class TestTask extends AsyncTask<Void, String, Void> {
             ArrayList<LatLng> sublist = new ArrayList<>(hPoints.subList(0, arraySize));
             RouteBoxer rb = new RouteBoxer(sublist, distance);
             double start = System.nanoTime();
-            ArrayList<Box> boxes = rb.box();
+            ArrayList<RouteBoxer.Box> boxes = rb.box();
             double time = System.nanoTime() - start;
             int size = boxes.size();
             int sizeH = rb.getRouteBoxesH().size();
@@ -145,7 +144,7 @@ public class TestTask extends AsyncTask<Void, String, Void> {
             ArrayList<LatLng> sublist = new ArrayList<>(points.subList(0, arraySize));
             RouteBoxer rb = new RouteBoxer(sublist, distance);
             double start = System.nanoTime();
-            ArrayList<Box> boxes = rb.box();
+            ArrayList<RouteBoxer.Box> boxes = rb.box();
             double time = System.nanoTime() - start;
             int size = boxes.size();
             int sizeH = rb.getRouteBoxesH().size();
@@ -173,7 +172,7 @@ public class TestTask extends AsyncTask<Void, String, Void> {
             ArrayList<LatLng> sublist = new ArrayList<>(dPoints.subList(0, arraySize));
             RouteBoxer rb = new RouteBoxer(sublist, distance);
             double start = System.nanoTime();
-            ArrayList<Box> boxes = rb.box();
+            ArrayList<RouteBoxer.Box> boxes = rb.box();
             double time = System.nanoTime() - start;
             int size = boxes.size();
             int sizeH = rb.getRouteBoxesH().size();
@@ -201,7 +200,7 @@ public class TestTask extends AsyncTask<Void, String, Void> {
             ArrayList<LatLng> sublist = new ArrayList<>(hPoints.subList(0, arraySize));
             RouteBoxer rb = new RouteBoxer(sublist, distance);
             double start = System.nanoTime();
-            ArrayList<Box> boxes = rb.box();
+            ArrayList<RouteBoxer.Box> boxes = rb.box();
             double time = System.nanoTime() - start;
             int size = boxes.size();
             int sizeH = rb.getRouteBoxesH().size();
