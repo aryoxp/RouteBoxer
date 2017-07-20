@@ -4,8 +4,6 @@ import android.content.Context;
 import android.os.AsyncTask;
 import android.util.Log;
 
-import com.google.android.gms.maps.model.LatLng;
-
 import java.util.ArrayList;
 
 import ap.mobile.routeboxer.helper.FileHelper;
@@ -16,13 +14,13 @@ import ap.mobile.routeboxerlib.RouteBoxer;
  */
 public class TestTask extends AsyncTask<Void, String, Void> {
 
-    private final ArrayList<LatLng> hPoints;
-    private final ArrayList<LatLng> points;
+    private final ArrayList<RouteBoxer.LatLng> hPoints;
+    private final ArrayList<RouteBoxer.LatLng> points;
     private final Context context;
-    private final ArrayList<LatLng> dPoints;
+    private final ArrayList<RouteBoxer.LatLng> dPoints;
     private TestInterface testInterface;
 
-    public TestTask(Context context, ArrayList<LatLng> points, ArrayList<LatLng> dPoints, ArrayList<LatLng> hPoints) {
+    public TestTask(Context context, ArrayList<RouteBoxer.LatLng> points, ArrayList<RouteBoxer.LatLng> dPoints, ArrayList<RouteBoxer.LatLng> hPoints) {
         this.context = context;
         this.points = points;
         this.dPoints = dPoints;
@@ -54,7 +52,7 @@ public class TestTask extends AsyncTask<Void, String, Void> {
         for(int i = distance; i<300; i+=10 ) {
             distance = i;
             this.publishProgress("Processing V-Distance " + i);
-            ArrayList<LatLng> sublist = new ArrayList<>(points.subList(0, arraySize));
+            ArrayList<RouteBoxer.LatLng> sublist = new ArrayList<>(points.subList(0, arraySize));
             RouteBoxer rb = new RouteBoxer(sublist, distance);
             double start = System.nanoTime();
             ArrayList<RouteBoxer.Box> boxes = rb.box();
@@ -83,7 +81,7 @@ public class TestTask extends AsyncTask<Void, String, Void> {
         for(int i = distance; i<300; i+=10 ) {
             this.publishProgress("Processing D-Distance " + i);
             distance = i;
-            ArrayList<LatLng> sublist = new ArrayList<>(dPoints.subList(0, arraySize));
+            ArrayList<RouteBoxer.LatLng> sublist = new ArrayList<>(dPoints.subList(0, arraySize));
             RouteBoxer rb = new RouteBoxer(sublist, distance);
             double start = System.nanoTime();
             ArrayList<RouteBoxer.Box> boxes = rb.box();
@@ -112,7 +110,7 @@ public class TestTask extends AsyncTask<Void, String, Void> {
         for(int i = distance; i<300; i+=10 ) {
             this.publishProgress("Processing H-Distance " + i);
             distance = i;
-            ArrayList<LatLng> sublist = new ArrayList<>(hPoints.subList(0, arraySize));
+            ArrayList<RouteBoxer.LatLng> sublist = new ArrayList<>(hPoints.subList(0, arraySize));
             RouteBoxer rb = new RouteBoxer(sublist, distance);
             double start = System.nanoTime();
             ArrayList<RouteBoxer.Box> boxes = rb.box();
@@ -141,7 +139,7 @@ public class TestTask extends AsyncTask<Void, String, Void> {
         for(int i = 10; i<100; i+=5 ) {
             this.publishProgress("Processing V-Numpath " + i);
             arraySize = i;
-            ArrayList<LatLng> sublist = new ArrayList<>(points.subList(0, arraySize));
+            ArrayList<RouteBoxer.LatLng> sublist = new ArrayList<>(points.subList(0, arraySize));
             RouteBoxer rb = new RouteBoxer(sublist, distance);
             double start = System.nanoTime();
             ArrayList<RouteBoxer.Box> boxes = rb.box();
@@ -169,7 +167,7 @@ public class TestTask extends AsyncTask<Void, String, Void> {
         for(int i = 10; i<100; i+=5 ) {
             this.publishProgress("Processing D-Numpath " + i);
             arraySize = i;
-            ArrayList<LatLng> sublist = new ArrayList<>(dPoints.subList(0, arraySize));
+            ArrayList<RouteBoxer.LatLng> sublist = new ArrayList<>(dPoints.subList(0, arraySize));
             RouteBoxer rb = new RouteBoxer(sublist, distance);
             double start = System.nanoTime();
             ArrayList<RouteBoxer.Box> boxes = rb.box();
@@ -197,7 +195,7 @@ public class TestTask extends AsyncTask<Void, String, Void> {
         for(int i = 10; i<100; i+=5 ) {
             this.publishProgress("Processing H-Numpath " + i);
             arraySize = i;
-            ArrayList<LatLng> sublist = new ArrayList<>(hPoints.subList(0, arraySize));
+            ArrayList<RouteBoxer.LatLng> sublist = new ArrayList<>(hPoints.subList(0, arraySize));
             RouteBoxer rb = new RouteBoxer(sublist, distance);
             double start = System.nanoTime();
             ArrayList<RouteBoxer.Box> boxes = rb.box();

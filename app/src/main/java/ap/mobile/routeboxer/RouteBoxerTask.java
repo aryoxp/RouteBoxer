@@ -3,7 +3,6 @@ package ap.mobile.routeboxer;
 import android.os.AsyncTask;
 
 import com.google.android.gms.maps.model.LatLng;
-import com.google.android.gms.maps.model.LatLngBounds;
 
 import java.util.ArrayList;
 
@@ -15,13 +14,17 @@ import ap.mobile.routeboxerlib.RouteBoxer;
 public class RouteBoxerTask extends AsyncTask<Void, RouteBoxerTask.RouterBoxerData, ArrayList<RouteBoxer.Box>>
         implements RouteBoxer.IRouteBoxer {
 
-    private final ArrayList<LatLng> route;
+    private final ArrayList<RouteBoxer.LatLng> route = new ArrayList<>();
     private final int distance;
     private final IRouteBoxerTask iRouteBoxerTask;
     private int step;
 
     public RouteBoxerTask(ArrayList<LatLng> route, int distance, IRouteBoxerTask iRouteBoxerTask) {
-        this.route = route;
+        for (LatLng point:
+                route) {
+            RouteBoxer.LatLng latLng = new RouteBoxer.LatLng(point.latitude, point.longitude);
+            this.route.add(latLng);
+        }
         this.distance = distance;
         this.iRouteBoxerTask = iRouteBoxerTask;
     }
@@ -43,7 +46,7 @@ public class RouteBoxerTask extends AsyncTask<Void, RouteBoxerTask.RouterBoxerDa
     public void onBoxesObtained(ArrayList<RouteBoxer.Box> boxes) {}
 
     @Override
-    public void onBoundsObtained(LatLngBounds bounds) {}
+    public void onBoundsObtained(RouteBoxer.LatLngBounds bounds) {}
 
     @Override
     public void onGridObtained(RouteBoxer.Box[][] boxArray, ArrayList<RouteBoxer.Box> boxes) {
@@ -110,7 +113,7 @@ public class RouteBoxerTask extends AsyncTask<Void, RouteBoxerTask.RouterBoxerDa
             String message = data.message;
             ArrayList<RouteBoxer.Box> boxes = data.boxes;
             //if(boxes != null)
-                //this.iRouteBoxerTask.onRouteBoxerBoxPublished(boxes, this.step);
+            //    this.iRouteBoxerTask.onRouteBoxerBoxPublished(boxes, this.step);
             if(message != null)
                 this.iRouteBoxerTask.onMessage(message);
             switch(this.step) {

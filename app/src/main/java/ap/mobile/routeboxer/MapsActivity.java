@@ -228,9 +228,10 @@ public class MapsActivity extends AppCompatActivity
         for (RouteBoxer.Box box : boxes) {
             LatLng nw = new LatLng(box.ne.latitude, box.sw.longitude);
             LatLng se = new LatLng(box.sw.latitude, box.ne.longitude);
-
+            LatLng sw = new LatLng(box.sw.latitude, box.sw.longitude);
+            LatLng ne = new LatLng(box.ne.latitude, box.ne.longitude);
             PolygonOptions polygonOptions = new PolygonOptions()
-                    .add(box.sw, nw, box.ne, se, box.sw)
+                    .add(sw, nw, ne, se, sw)
                     .strokeColor(color)
                     .strokeWidth(5);
             if (box.marked) {
@@ -480,9 +481,9 @@ public class MapsActivity extends AppCompatActivity
                         dPoints.remove((new Random()).nextInt((dPoints.size()-2))+1);
 
 
-                    TestTask testTask = new TestTask(this, points, dPoints, hPoints);
-                    testTask.setStatusInterface(this);
-                    testTask.execute();
+                    //TestTask testTask = new TestTask(this, points, dPoints, hPoints);
+                    //testTask.setStatusInterface(this);
+                    //testTask.execute();
 
 
                 } catch (Exception ex) {

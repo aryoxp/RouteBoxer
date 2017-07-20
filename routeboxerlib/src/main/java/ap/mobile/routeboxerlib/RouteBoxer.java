@@ -1,8 +1,5 @@
 package ap.mobile.routeboxerlib;
 
-import com.google.android.gms.maps.model.LatLng;
-import com.google.android.gms.maps.model.LatLngBounds;
-
 import java.util.ArrayList;
 
 /**
@@ -45,9 +42,10 @@ public class RouteBoxer {
         if(this.iRouteBoxer != null)
             this.iRouteBoxer.onProcess("Calculating bounds...", null);
 
-        LatLngBounds.Builder builder = LatLngBounds.builder();
+        this.bounds = new LatLngBounds();
+        //LatLngBounds.Builder builder = LatLngBounds.builder();
         for (LatLng point : this.route) {
-            builder.include(point);
+            this.bounds.include(point);
         }
 
         if(this.iRouteBoxer != null)
@@ -55,12 +53,12 @@ public class RouteBoxer {
 
         // Expanding bounds
 
-        this.bounds = builder.build();
+        this.bounds.build();
         LatLng southwest = new LatLng(this.bounds.southwest.latitude - degree,
                 this.bounds.southwest.longitude - degree);
         LatLng northeast = new LatLng(this.bounds.northeast.latitude + degree,
                 this.bounds.northeast.longitude + degree);
-        this.bounds = builder.include(southwest).include(northeast).build();
+        this.bounds = this.bounds.include(southwest).include(northeast).build();
 
         if(this.iRouteBoxer != null) {
             this.iRouteBoxer.onProcess("Bounds obtained...", null);
@@ -218,13 +216,13 @@ public class RouteBoxer {
 
                 // Mark all surrounding cells
                 boxArray[b.x-1][b.y-1].expandMark();    //.redraw(mMap, Color.BLACK, Color.GREEN);
-                boxArray[b.x-1][b.y].expandMark();      //.redraw(mMap, Color.BLACK, Color.GREEN);
-                boxArray[b.x-1][b.y+1].expandMark();    //.redraw(mMap, Color.BLACK, Color.GREEN);
+                boxArray[b.x - 1][b.y].expandMark();      //.redraw(mMap, Color.BLACK, Color.GREEN);
+                boxArray[b.x - 1][b.y + 1].expandMark();    //.redraw(mMap, Color.BLACK, Color.GREEN);
                 boxArray[b.x][b.y+1].expandMark();      //.redraw(mMap, Color.BLACK, Color.GREEN);
                 boxArray[b.x+1][b.y+1].expandMark();    //.redraw(mMap, Color.BLACK, Color.GREEN);
                 boxArray[b.x+1][b.y].expandMark();      //.redraw(mMap, Color.BLACK, Color.GREEN);
-                boxArray[b.x+1][b.y-1].expandMark();    //.redraw(mMap, Color.BLACK, Color.GREEN);
-                boxArray[b.x][b.y-1].expandMark();      //.redraw(mMap, Color.BLACK, Color.GREEN);
+                boxArray[b.x + 1][b.y - 1].expandMark();    //.redraw(mMap, Color.BLACK, Color.GREEN);
+                boxArray[b.x][b.y - 1].expandMark();      //.redraw(mMap, Color.BLACK, Color.GREEN);
             }
         }
 
@@ -375,6 +373,7 @@ public class RouteBoxer {
         void onMergedVertically(ArrayList<Box> mergedBoxes);
         void onMergedHorizontally(ArrayList<Box> mergedBoxes);
         void onProcess(String processInfo, ArrayList<Box> boxes);
+
     }
 
     public class Box {
@@ -415,6 +414,56 @@ public class RouteBoxer {
             return b;
         }
 
+    }
+
+    public static class LatLng {
+        public double latitude;
+        public double longitude;
+        public LatLng(double latitude, double longitude) {
+            this.latitude = latitude;
+            this.longitude = longitude;
+        }
+    }
+
+    public class LatLngBounds {
+
+        private ArrayList<LatLng> latLngs = new ArrayList<>();
+
+        public LatLng southwest;
+        public LatLng northeast;
+
+        public LatLngBounds include(LatLng latLng) {
+            this.latLngs.add(latLng);
+            return this;
+        }
+
+        public LatLngBounds build() {
+            this.southwest = null;
+            this.northeast = null;
+            double maxLat = 0;
+            double maxLng = 0;
+            double minLat = 0;
+            double minLng = 0;
+            for ( LatLng latLng:
+                 this.latLngs) {
+
+                if(maxLat == 0 && maxLng == 0 && minLat == 0 && minLng == 0) {
+                    maxLat = minLat = latLng.latitude;
+                    maxLng = minLng = latLng.longitude;
+                    continue;
+                }
+
+                if(latLng.latitude > maxLat) maxLat = latLng.latitude;
+                if(latLng.longitude > maxLng) maxLng = latLng.longitude;
+                if(latLng.latitude < minLat) minLat = latLng.latitude;
+                if(latLng.longitude < minLng) minLng = latLng.longitude;
+            }
+
+            this.southwest = new LatLng(minLat, minLng);
+            this.northeast = new LatLng(maxLat, maxLng);
+
+            return this;
+        }
     }
 
 
