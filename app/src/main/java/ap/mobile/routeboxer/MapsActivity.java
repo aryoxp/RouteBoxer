@@ -41,7 +41,7 @@ import ap.mobile.routeboxer.helper.FileHelper;
 import ap.mobile.routeboxerlib.RouteBoxer;
 
 public class MapsActivity extends AppCompatActivity
-        implements OnMapReadyCallback, IMaps, IRouteBoxerTask,
+        implements OnMapReadyCallback, IMaps, RouteBoxerTask.IRouteBoxerTask,
         GoogleApiClient.ConnectionCallbacks,
         GoogleApiClient.OnConnectionFailedListener,
         GoogleMap.OnMapLongClickListener,
@@ -193,31 +193,13 @@ public class MapsActivity extends AppCompatActivity
     }
 
     @Override
-    public void onRouteBoxerBoxPublished(ArrayList<RouteBoxer.Box> boxes, int step)
-    {
-        switch (step) {
-            case 1:
-            case 2:
-            case 3:
-                this.draw(boxes, Color.GRAY, Color.TRANSPARENT);
-                break;
-            case 5:
-            case 6:
-            case 7:
-            case 8:
-                this.draw(boxes, Color.DKGRAY, Color.TRANSPARENT);
-                break;
-            default:
-                this.draw(boxes, Color.GRAY, Color.argb(128, 255, 0, 0));
-                break;
-        }
-    }
-
-    @Override
-    public void onMessage(String message) {
+    public void onRouteBoxerMessage(String message) {
         if(this.routeBoxProcessDialog != null && this.routeBoxProcessDialog.isShowing())
             this.routeBoxProcessDialog.setContent(message);
     }
+
+    @Override
+    public void onRouteBoxerBoxes(ArrayList<RouteBoxer.Box> boxes, int boxBorderColor, int boxFillColor) {}
 
     private void draw(ArrayList<RouteBoxer.Box> boxes, int color, int fillColor) {
 
@@ -300,6 +282,7 @@ public class MapsActivity extends AppCompatActivity
     public void onMapLongClick(LatLng destination) {
 
         this.destination = destination;
+
         //this.destination = new LatLng(-7.953037137608645,112.63877917081118);
         //this.origin = new LatLng(-7.9545055,112.6148412);
 
@@ -310,8 +293,6 @@ public class MapsActivity extends AppCompatActivity
                 .title("Destination")
                 .position(this.destination)
                 .snippet("Click to route box from your location.");
-
-
 
         if(this.destinationMarker != null)
             this.destinationMarker.remove();

@@ -2,93 +2,98 @@ package ap.mobile.routeboxerlib;
 
 import java.util.ArrayList;
 
-/**
- * Created by aryo on 29/1/16.
- */
 public class RouteBoxer {
 
-    private final ArrayList<LatLng> route;
+    private final ArrayList<RouteBoxer.LatLng> route;
     private final int distance;
-    private LatLngBounds bounds;
-    private IRouteBoxer iRouteBoxer;
-    private ArrayList<Box> boxes = new ArrayList<>();
-    private ArrayList<Box> routeBoxesH;
-    private ArrayList<Box> routeBoxesV;
+    private final double degree;
+    private RouteBoxer.LatLngBounds bounds;
+    private RouteBoxer.IRouteBoxer iRouteBoxer;
+    private ArrayList<RouteBoxer.Box> boxes = new ArrayList<>();
+    private ArrayList<RouteBoxer.Box> routeBoxesH;
+    private ArrayList<RouteBoxer.Box> routeBoxesV;
 
-    public RouteBoxer(ArrayList<LatLng> route, int distance) {
+    public RouteBoxer(ArrayList<RouteBoxer.LatLng> route, int distance) {
         this.route = route;
         this.distance = distance;
+        this.degree = this.distance / 1.1132 * 0.00001;
     }
 
-    public void setRouteBoxerInterface(IRouteBoxer iRouteBoxer) {
+    public void setRouteBoxerInterface(RouteBoxer.IRouteBoxer iRouteBoxer) {
         this.iRouteBoxer = iRouteBoxer;
     }
 
-    public static ArrayList<Box> box(ArrayList<LatLng> path, int distance) {
+    public static ArrayList<RouteBoxer.Box> box(ArrayList<RouteBoxer.LatLng> path, int distance) {
         RouteBoxer routeBoxer = new RouteBoxer(path, distance);
         return routeBoxer.box();
     }
 
-    public ArrayList<Box> box() {
+    public static ArrayList<RouteBoxer.Box> box(ArrayList<RouteBoxer.LatLng> path, int distance, RouteBoxer.IRouteBoxer iRouteBoxer) {
+        RouteBoxer routeBoxer = new RouteBoxer(path, distance);
+        routeBoxer.setRouteBoxerInterface(iRouteBoxer);
+        return routeBoxer.box();
+    }
+
+    public ArrayList<RouteBoxer.Box> box() {
 
         if(this.iRouteBoxer != null)
-            this.iRouteBoxer.onProcess("Initializing...", null);
+            this.iRouteBoxer.onProcess("Initializing...");
 
 
-        double degree = distance / 1.1132 * 0.00001;
+
 
         // Getting bounds
 
         if(this.iRouteBoxer != null)
-            this.iRouteBoxer.onProcess("Calculating bounds...", null);
+            this.iRouteBoxer.onProcess("Calculating bounds...");
 
-        this.bounds = new LatLngBounds();
+        this.bounds = new RouteBoxer.LatLngBounds();
         //LatLngBounds.Builder builder = LatLngBounds.builder();
-        for (LatLng point : this.route) {
+        for (RouteBoxer.LatLng point : this.route) {
             this.bounds.include(point);
         }
 
         if(this.iRouteBoxer != null)
-            this.iRouteBoxer.onProcess("Expanding bounds...", null);
+            this.iRouteBoxer.onProcess("Expanding bounds...");
 
         // Expanding bounds
 
         this.bounds.build();
-        LatLng southwest = new LatLng(this.bounds.southwest.latitude - degree,
-                this.bounds.southwest.longitude - degree);
-        LatLng northeast = new LatLng(this.bounds.northeast.latitude + degree,
-                this.bounds.northeast.longitude + degree);
+        RouteBoxer.LatLng southwest = new RouteBoxer.LatLng(this.bounds.southwest.latitude - this.degree,
+                this.bounds.southwest.longitude - this.degree);
+        RouteBoxer.LatLng northeast = new RouteBoxer.LatLng(this.bounds.northeast.latitude + this.degree,
+                this.bounds.northeast.longitude + this.degree);
         this.bounds = this.bounds.include(southwest).include(northeast).build();
 
         if(this.iRouteBoxer != null) {
-            this.iRouteBoxer.onProcess("Bounds obtained...", null);
+            this.iRouteBoxer.onProcess("Bounds obtained...");
             this.iRouteBoxer.onBoundsObtained(this.bounds);
         }
 
         // Laying out grids
 
         if(this.iRouteBoxer != null)
-            this.iRouteBoxer.onProcess("Overlaying grid...", null);
+            this.iRouteBoxer.onProcess("Overlaying grid...");
 
-        LatLng sw = this.bounds.southwest;
-        LatLng ne = new LatLng(sw.latitude + degree, sw.longitude + degree);
+        RouteBoxer.LatLng sw = this.bounds.southwest;
+        RouteBoxer.LatLng ne = new RouteBoxer.LatLng(sw.latitude + this.degree, sw.longitude + this.degree);
         int x = 0, y = 0;
-        Box gridBox;
+        RouteBoxer.Box gridBox;
 
         do {
 
             do {
-                gridBox = new Box(sw, ne, x, y);
+                gridBox = new RouteBoxer.Box(sw, ne, x, y);
                 this.boxes.add(gridBox); //box.draw(mMap, Color.BLUE);
-                sw = new LatLng(sw.latitude, ne.longitude);
-                ne = new LatLng(sw.latitude + degree, sw.longitude + degree);
+                sw = new RouteBoxer.LatLng(sw.latitude, ne.longitude);
+                ne = new RouteBoxer.LatLng(sw.latitude + degree, sw.longitude + degree);
                 x++;
             } while (gridBox.ne.longitude < this.bounds.northeast.longitude);
 
             if (gridBox.ne.latitude < this.bounds.northeast.latitude) {
                 x = 0;
-                sw = new LatLng(sw.latitude + degree, this.bounds.southwest.longitude);
-                ne = new LatLng(sw.latitude + degree, sw.longitude + degree);
+                sw = new RouteBoxer.LatLng(sw.latitude + degree, this.bounds.southwest.longitude);
+                ne = new RouteBoxer.LatLng(sw.latitude + degree, sw.longitude + degree);
             }
             y++;
 
@@ -98,58 +103,60 @@ public class RouteBoxer {
         // Center the grids
         // and converts to 2-D array
 
-        if(this.iRouteBoxer != null)
-            this.iRouteBoxer.onProcess("Overlaying grid...", null);
+        if(this.iRouteBoxer != null) {
+            this.iRouteBoxer.onGridOverlaid(this.boxes);
+            this.iRouteBoxer.onProcess("Aligning grid...");
+        }
 
-        double latDif = boxes.get(boxes.size() - 1).ne.latitude - this.bounds.northeast.latitude;
-        double lngDif = boxes.get(boxes.size() - 1).ne.longitude - this.bounds.northeast.longitude;
+        double latDif = this.boxes.get(this.boxes.size() - 1).ne.latitude - this.bounds.northeast.latitude;
+        double lngDif = this.boxes.get(this.boxes.size() - 1).ne.longitude - this.bounds.northeast.longitude;
 
-        Box boxArray[][] = new Box[x][y];
-        for (Box bx : boxes) {
-            bx.sw = new LatLng(bx.sw.latitude - (latDif / 2), bx.sw.longitude - (lngDif / 2));
-            bx.ne = new LatLng(bx.ne.latitude - (latDif / 2), bx.ne.longitude - (lngDif / 2));
-            boxArray[bx.x][bx.y] = bx;
+        RouteBoxer.Box alignedBoxes[][] = new RouteBoxer.Box[x][y];
+        for (RouteBoxer.Box bx : this.boxes) {
+            bx.sw = new RouteBoxer.LatLng(bx.sw.latitude - (latDif / 2), bx.sw.longitude - (lngDif / 2));
+            bx.ne = new RouteBoxer.LatLng(bx.ne.latitude - (latDif / 2), bx.ne.longitude - (lngDif / 2));
+            bx.updateNWSE();
+            alignedBoxes[bx.x][bx.y] = bx;
         }
 
         if(this.iRouteBoxer != null) {
-            this.iRouteBoxer.onGridObtained(boxArray, boxes);
-            this.iRouteBoxer.onProcess("Traversing...", null);
+            this.iRouteBoxer.onGridObtained(alignedBoxes);
+            this.iRouteBoxer.onProcess("Traversing...");
         }
 
         // step 2: Traverse all points and mark grid which contains it.
-        boxArray = this.traversePointsAndMarkGrids(boxArray);
+        alignedBoxes = this.traversePointsAndMarkGrids(alignedBoxes);
 
         if(this.iRouteBoxer != null)
-            this.iRouteBoxer.onProcess("Expanding cell marks...", null);
+            this.iRouteBoxer.onProcess("Expanding cell marks...");
 
         // step 3: Expand marked cells
-        boxArray = this.expandMarks(x, y, boxArray);
-
+        alignedBoxes = this.expandMarks(alignedBoxes);
 
         if(this.iRouteBoxer != null)
-            this.iRouteBoxer.onProcess("Duplicating array...", null);
+            this.iRouteBoxer.onProcess("Duplicating array...");
 
-        int length = boxArray.length;
-        Box[][] boxArrayCopy = new Box[length][boxArray[0].length];
+        int length = alignedBoxes.length;
+        RouteBoxer.Box[][] boxArrayCopy = new RouteBoxer.Box[length][alignedBoxes[0].length];
         for (int i = 0; i < length; i++) {
-            System.arraycopy(boxArray[i], 0, boxArrayCopy[i], 0, boxArray[i].length);
+            System.arraycopy(alignedBoxes[i], 0, boxArrayCopy[i], 0, alignedBoxes[i].length);
         }
 
         if(this.iRouteBoxer != null)
-            this.iRouteBoxer.onProcess("Merging horizontally...", null);
+            this.iRouteBoxer.onProcess("Merging horizontally...");
         // step 4: Merge cells and generate boxes
         // 1st Approach: merge cells horizontally
-        this.horizontalMerge(x, y, boxArray);
+        this.horizontalMerge(x, y, alignedBoxes);
 
         if(this.iRouteBoxer != null)
-            this.iRouteBoxer.onProcess("Merging vertically...", null);
+            this.iRouteBoxer.onProcess("Merging vertically...");
         // 2nd Approach: Merge cells vertically
         this.verticalMerge(x, y, boxArrayCopy);
 
         if(this.iRouteBoxer != null)
-            this.iRouteBoxer.onProcess("Obtaining results...", null);
+            this.iRouteBoxer.onProcess("Obtaining results...");
         // Step 5: return boxes with the least count from both approach
-        ArrayList<Box> boxes = (this.routeBoxesV.size() >= routeBoxesH.size()) ? this.routeBoxesH : this.routeBoxesV;
+        ArrayList<RouteBoxer.Box> boxes = (this.routeBoxesV.size() >= routeBoxesH.size()) ? this.routeBoxesH : this.routeBoxesV;
         if(this.iRouteBoxer != null)
             this.iRouteBoxer.onBoxesObtained(boxes);
 
@@ -157,23 +164,52 @@ public class RouteBoxer {
 
     }
 
-    private Box[][] traversePointsAndMarkGrids(Box[][] boxArray) {
+    private RouteBoxer.Box[][] traversePointsAndMarkGrids(RouteBoxer.Box[][] boxArray) {
         int sizeX = boxArray.length;
         int sizeY = boxArray[0].length;
-        Box lastBox = null;
-        for (LatLng point : this.route) {
-            for(int x = 0; x < sizeX; x++) {
+
+        int i=0;
+        LatLng origin = null, destination;
+        //ArrayList<Line> lines = new ArrayList<>();
+
+        for (RouteBoxer.LatLng point : this.route) {
+
+            Line l = null;
+            double ay1 = 0, ay2 = 0, ax2 = 0, ax1 = 0;
+
+            if (i == 0) {
+                origin = point;
+            } else {
+                destination = point;
+                // finding line bounding box
+                l = new Line(origin, destination);
+                //lines.add(l);
+                origin = destination;
+            }
+
+            if (l != null) {
+                ay1 = Math.abs((l.origin.latitude > l.destination.latitude) ? l.origin.latitude : l.destination.latitude);
+                ay2 = Math.abs((l.origin.latitude < l.destination.latitude) ? l.origin.latitude : l.destination.latitude);
+                ax2 = Math.abs((l.origin.longitude > l.destination.longitude) ? l.origin.longitude : l.destination.longitude);
+                ax1 = Math.abs((l.origin.longitude < l.destination.longitude) ? l.origin.longitude : l.destination.longitude);
+            }
+
+            i++;
+
+            for (int x = 0; x < sizeX; x++) {
                 for (int y = 0; y < sizeY; y++) {
-                    Box bx = boxArray[x][y];
-                    if(bx.marked) continue;
+                    RouteBoxer.Box bx = boxArray[x][y];
+                    if (bx.marked) continue;
                     if (point.latitude > bx.sw.latitude
                             && point.latitude < bx.ne.latitude
                             && point.longitude > bx.sw.longitude
                             && point.longitude < bx.ne.longitude) {
                         bx.mark();
+                        /* // previous algorithm to mark boxes in between marked boxes
                         if (lastBox == null)
                             lastBox = bx;
                         else {
+
                             int lastX = lastBox.x;
                             int lastY = lastBox.y;
                             int diffX = bx.x - lastX;
@@ -194,15 +230,32 @@ public class RouteBoxer {
                                 for(int dy = bx.y - diffY + 1; dy < bx.y; dy++)
                                     boxArray[lastBox.x][dy].mark();
                             }
+
                             lastBox = bx;
                         }
+                        */
+                    }
+
+                    // if a line exists
+                    if (l != null) {
+                        // find box bounds
+                        double bx2 = Math.abs(bx.se.longitude);
+                        double bx1 = Math.abs(bx.nw.longitude);
+                        double by2 = Math.abs(bx.se.latitude);
+                        double by1 = Math.abs(bx.nw.latitude);
+
+                        // if box of line and grid box intersect
+                        if (!(ax1 <= bx2 && ax2 >= bx1 && ay1 <= by2 && ay2 >= by1)) continue;
+
+                        // if the line intersect with current box, mark it!
+                        if (l.intersect(bx.sw, bx.ne)) bx.mark();
                     }
                 }
             }
         }
 
         if(this.iRouteBoxer != null) {
-            this.iRouteBoxer.onProcess("Traversing and marking complete...", null);
+            this.iRouteBoxer.onProcess("Traversing and marking complete...");
             this.iRouteBoxer.onGridMarked(this.boxes);
         }
 
@@ -210,8 +263,8 @@ public class RouteBoxer {
 
     }
 
-    private Box[][] expandMarks(int x, int y, Box[][] boxArray) {
-        for(Box b:boxes) {
+    private RouteBoxer.Box[][] expandMarks(RouteBoxer.Box[][] boxArray) {
+        for(RouteBoxer.Box b:this.boxes) {
             if(b.marked) {
 
                 // Mark all surrounding cells
@@ -227,19 +280,19 @@ public class RouteBoxer {
         }
 
         if(this.iRouteBoxer != null) {
-            this.iRouteBoxer.onProcess("Cell marks expanded", null);
-            this.iRouteBoxer.onGridMarksExpanded(boxArray, this.boxes);
+            this.iRouteBoxer.onProcess("Cell marks expanded");
+            this.iRouteBoxer.onGridMarksExpanded(boxArray);
         }
 
         return boxArray;
     }
 
-    private void verticalMerge(int x, int y, Box[][] boxArray) {
-        ArrayList<Box> mergedBoxes = new ArrayList<>();
-        Box vBox = null;
+    private void verticalMerge(int x, int y, RouteBoxer.Box[][] boxArray) {
+        ArrayList<RouteBoxer.Box> mergedBoxes = new ArrayList<>();
+        RouteBoxer.Box vBox = null;
         for(int cx = 0; cx < x; cx++) {
             for (int cy = 0; cy < y; cy++) {
-                Box b = new Box(boxArray[cx][cy].sw, boxArray[cx][cy].ne, cx, cy);
+                RouteBoxer.Box b = new RouteBoxer.Box(boxArray[cx][cy].sw, boxArray[cx][cy].ne, cx, cy);
                 if(boxArray[cx][cy].marked || boxArray[cx][cy].expandMarked)
                     b.mark();
                 if ((b.marked || b.expandMarked)) {
@@ -262,21 +315,21 @@ public class RouteBoxer {
         }
 
         if(this.iRouteBoxer != null) {
-            this.iRouteBoxer.onProcess("Adjoint cells merged.", null);
+            this.iRouteBoxer.onProcess("Adjoint cells merged.");
             this.iRouteBoxer.onMergedAdjointVertically(mergedBoxes);
         }
 
 
 
         this.routeBoxesV = new ArrayList<>();
-        Box rBox = null;
+        RouteBoxer.Box rBox = null;
         for(int i = 0; i < mergedBoxes.size(); i++) {
-            Box bx = mergedBoxes.get(i);
+            RouteBoxer.Box bx = mergedBoxes.get(i);
             if(bx.merged)
                 continue;
             rBox = bx;
             for (int j = i + 1; j < mergedBoxes.size(); j++) {
-                Box b = mergedBoxes.get(j);
+                RouteBoxer.Box b = mergedBoxes.get(j);
                 if (b.sw.latitude == rBox.sw.latitude
                         && b.ne.latitude == rBox.ne.latitude
                         && b.sw.longitude == rBox.ne.longitude) {
@@ -289,17 +342,17 @@ public class RouteBoxer {
         }
 
         if(this.iRouteBoxer != null) {
-            this.iRouteBoxer.onProcess("Adjoint boxes merged.", null);
+            this.iRouteBoxer.onProcess("Adjoint boxes merged.");
             this.iRouteBoxer.onMergedVertically(routeBoxesV);
         }
     }
 
-    private void horizontalMerge(int x, int y, Box[][] boxArray) {
-        ArrayList<Box> mergedBoxes = new ArrayList<>();
-        Box hBox = null;
+    private void horizontalMerge(int x, int y, RouteBoxer.Box[][] boxArray) {
+        ArrayList<RouteBoxer.Box> mergedBoxes = new ArrayList<>();
+        RouteBoxer.Box hBox = null;
         for(int cy = 0; cy < y; cy++) {
             for (int cx = 0; cx < x; cx++) {
-                Box b = new Box(boxArray[cx][cy].sw, boxArray[cx][cy].ne, cx, cy);
+                RouteBoxer.Box b = new RouteBoxer.Box(boxArray[cx][cy].sw, boxArray[cx][cy].ne, cx, cy);
                 if(boxArray[cx][cy].marked || boxArray[cx][cy].expandMarked)
                     b.mark();
                 if ((b.marked || b.expandMarked)) {
@@ -322,19 +375,19 @@ public class RouteBoxer {
         }
 
         if(this.iRouteBoxer != null) {
-            this.iRouteBoxer.onProcess("Adjoint cells merged.", null);
+            this.iRouteBoxer.onProcess("Adjoint cells merged.");
             this.iRouteBoxer.onMergedAdjointHorizontally(mergedBoxes);
         }
 
         this.routeBoxesH = new ArrayList<>();
-        Box rBox = null;
+        RouteBoxer.Box rBox = null;
         for(int i = 0; i < mergedBoxes.size(); i++) {
-            Box bx = mergedBoxes.get(i);
+            RouteBoxer.Box bx = mergedBoxes.get(i);
             if(bx.merged)
                 continue;
             rBox = bx;
             for (int j = i + 1; j < mergedBoxes.size(); j++) {
-                Box b = mergedBoxes.get(j);
+                RouteBoxer.Box b = mergedBoxes.get(j);
                 if (b.sw.longitude == rBox.sw.longitude
                         && b.sw.latitude == rBox.ne.latitude
                         && b.ne.longitude == rBox.ne.longitude) {
@@ -346,15 +399,15 @@ public class RouteBoxer {
         }
 
         if (this.iRouteBoxer != null) {
-            this.iRouteBoxer.onProcess("Adjoint boxes merged.", null);
+            this.iRouteBoxer.onProcess("Adjoint boxes merged.");
             this.iRouteBoxer.onMergedHorizontally(routeBoxesH);
         }
     }
 
-    public ArrayList<Box> getRouteBoxesH() {
+    public ArrayList<RouteBoxer.Box> getRouteBoxesH() {
         return this.routeBoxesH;
     }
-    public ArrayList<Box> getRouteBoxesV() {
+    public ArrayList<RouteBoxer.Box> getRouteBoxesV() {
         return this.routeBoxesV;
     }
 
@@ -363,54 +416,65 @@ public class RouteBoxer {
      */
     public static interface IRouteBoxer {
 
-        void onBoxesObtained(ArrayList<Box> boxes);
-        void onBoundsObtained(LatLngBounds bounds);
-        void onGridObtained(Box[][] boxArray, ArrayList<Box> boxes);
-        void onGridMarked(ArrayList<Box> boxes);
-        void onGridMarksExpanded(Box[][] boxArray, ArrayList<Box> boxes);
-        void onMergedAdjointVertically(ArrayList<Box> boxes);
-        void onMergedAdjointHorizontally(ArrayList<Box> boxes);
-        void onMergedVertically(ArrayList<Box> mergedBoxes);
-        void onMergedHorizontally(ArrayList<Box> mergedBoxes);
-        void onProcess(String processInfo, ArrayList<Box> boxes);
-
+        void onBoxesObtained(ArrayList<RouteBoxer.Box> boxes);
+        void onBoundsObtained(RouteBoxer.LatLngBounds bounds);
+        void onGridOverlaid(ArrayList<RouteBoxer.Box> boxes);
+        void onGridObtained(RouteBoxer.Box[][] boxArray);
+        void onGridMarked(ArrayList<RouteBoxer.Box> boxes);
+        void onGridMarksExpanded(Box[][] boxArray);
+        void onMergedAdjointVertically(ArrayList<RouteBoxer.Box> boxes);
+        void onMergedAdjointHorizontally(ArrayList<RouteBoxer.Box> boxes);
+        void onMergedVertically(ArrayList<RouteBoxer.Box> mergedBoxes);
+        void onMergedHorizontally(ArrayList<RouteBoxer.Box> mergedBoxes);
+        void onProcess(String processInfo);
+        void drawLine(LatLng origin, LatLng destination, int color);
+        void drawBox(LatLng origin, LatLng destination, int yellow);
+        void clearPolygon();
     }
 
     public class Box {
 
-        public int x;
-        public int y;
+        private int x;
+        private int y;
 
         public Boolean marked = false;
         public Boolean expandMarked = false;
         public Boolean merged = false;
 
-        public LatLng ne;
-        public LatLng sw;
+        public RouteBoxer.LatLng ne;
+        public RouteBoxer.LatLng sw;
+        private RouteBoxer.LatLng nw;
+        private RouteBoxer.LatLng se;
 
-        public Box() {}
+        private Box() {}
 
-        public Box(LatLng sw, LatLng ne, int x, int y) {
+        private Box(RouteBoxer.LatLng sw, RouteBoxer.LatLng ne, int x, int y) {
             this.sw = sw;
             this.ne = ne;
             this.x = x;
             this.y = y;
+            updateNWSE();
         }
 
-        public Box mark() { this.marked = true; return this; }
-        public Box unmark() { this.marked = false; return this; }
-        public Box expandMark() { this.expandMarked = true; return this; }
-        public Box unexpandMark() { this.expandMarked = false; return this; }
+        private void updateNWSE() {
+            this.nw = new RouteBoxer.LatLng(this.ne.latitude, this.sw.longitude);
+            this.se = new RouteBoxer.LatLng(this.sw.latitude, this.ne.longitude);
+        }
 
-        public Box copy(Box box) {
-            Box b = new Box();
+        private RouteBoxer.Box mark() { this.marked = true; return this; }
+        private RouteBoxer.Box unmark() { this.marked = false; return this; }
+        private RouteBoxer.Box expandMark() { this.expandMarked = true; return this; }
+        private RouteBoxer.Box unexpandMark() { this.expandMarked = false; return this; }
+
+        public RouteBoxer.Box copy(RouteBoxer.Box box) {
+            RouteBoxer.Box b = new RouteBoxer.Box();
             b.x = box.x;
             b.y = box.y;
             b.marked = box.marked;
             b.expandMarked = box.expandMarked;
             b.merged = box.merged;
-            b.ne = new LatLng(box.ne.latitude, box.ne.longitude);
-            b.sw = new LatLng(box.sw.latitude, box.sw.latitude);
+            b.ne = new RouteBoxer.LatLng(box.ne.latitude, box.ne.longitude);
+            b.sw = new RouteBoxer.LatLng(box.sw.latitude, box.sw.latitude);
             return b;
         }
 
@@ -427,25 +491,25 @@ public class RouteBoxer {
 
     public class LatLngBounds {
 
-        private ArrayList<LatLng> latLngs = new ArrayList<>();
+        private ArrayList<RouteBoxer.LatLng> latLngs = new ArrayList<>();
 
-        public LatLng southwest;
-        public LatLng northeast;
+        private RouteBoxer.LatLng southwest;
+        private RouteBoxer.LatLng northeast;
 
-        public LatLngBounds include(LatLng latLng) {
+        private RouteBoxer.LatLngBounds include(RouteBoxer.LatLng latLng) {
             this.latLngs.add(latLng);
             return this;
         }
 
-        public LatLngBounds build() {
+        private RouteBoxer.LatLngBounds build() {
             this.southwest = null;
             this.northeast = null;
             double maxLat = 0;
             double maxLng = 0;
             double minLat = 0;
             double minLng = 0;
-            for ( LatLng latLng:
-                 this.latLngs) {
+            for ( RouteBoxer.LatLng latLng:
+                    this.latLngs) {
 
                 if(maxLat == 0 && maxLng == 0 && minLat == 0 && minLng == 0) {
                     maxLat = minLat = latLng.latitude;
@@ -459,12 +523,53 @@ public class RouteBoxer {
                 if(latLng.longitude < minLng) minLng = latLng.longitude;
             }
 
-            this.southwest = new LatLng(minLat, minLng);
-            this.northeast = new LatLng(maxLat, maxLng);
+            this.southwest = new RouteBoxer.LatLng(minLat, minLng);
+            this.northeast = new RouteBoxer.LatLng(maxLat, maxLng);
 
             return this;
         }
     }
 
+    private class Line
+    {
+
+        private LatLng origin;
+        private LatLng destination;
+        private double m, c; // y = mx + c;
+
+        private Line (LatLng origin, LatLng destination) {
+
+            this.origin = origin;
+            this.destination = destination;
+            this.m = (destination.latitude - origin.latitude) / (destination.longitude - origin.longitude);
+            this.c = origin.latitude - (this.m * origin.longitude);
+
+        }
+
+        // y = mx + c; x = (y - c) / m
+        private double getY(double x) {
+            return this.m * x + c;
+        }
+        private double getX(double y) {
+            return (y - c) / this.m;
+        }
+
+        private boolean intersect(LatLng to, LatLng td) {
+
+            double y = this.getY(to.longitude);
+            if(y <= td.latitude && y >= to.latitude) return true;
+
+            y = this.getY(td.longitude);
+            if(y <= td.latitude && y >= to.latitude) return true;
+
+            double x = this.getX(td.latitude);
+            if(x >= to.longitude && x <= td.longitude) return true;
+
+            x = this.getX(to.latitude);
+            return (x >= to.longitude && x <= td.longitude);
+
+        }
+
+    }
 
 }

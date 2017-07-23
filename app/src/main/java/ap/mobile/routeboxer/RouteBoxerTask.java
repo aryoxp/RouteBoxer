@@ -1,5 +1,6 @@
 package ap.mobile.routeboxer;
 
+import android.graphics.Color;
 import android.os.AsyncTask;
 
 import com.google.android.gms.maps.model.LatLng;
@@ -8,9 +9,6 @@ import java.util.ArrayList;
 
 import ap.mobile.routeboxerlib.RouteBoxer;
 
-/**
- * Created by aryo on 30/1/16.
- */
 public class RouteBoxerTask extends AsyncTask<Void, RouteBoxerTask.RouterBoxerData, ArrayList<RouteBoxer.Box>>
         implements RouteBoxer.IRouteBoxer {
 
@@ -49,89 +47,90 @@ public class RouteBoxerTask extends AsyncTask<Void, RouteBoxerTask.RouterBoxerDa
     public void onBoundsObtained(RouteBoxer.LatLngBounds bounds) {}
 
     @Override
-    public void onGridObtained(RouteBoxer.Box[][] boxArray, ArrayList<RouteBoxer.Box> boxes) {
-        this.step = 1;
-        publishProgress(new RouterBoxerData(null, boxes));
-    }
+    public void onGridOverlaid(ArrayList<RouteBoxer.Box> boxes) {}
 
     @Override
-    public void onGridMarked(ArrayList<RouteBoxer.Box> boxes) {
-        this.step = 2;
-        RouterBoxerData data = new RouterBoxerData(null, boxes);
+    public void onGridObtained(RouteBoxer.Box[][] boxArray) {}
+
+    @Override
+    public void onGridMarked(ArrayList<RouteBoxer.Box> boxes) {}
+
+    @Override
+    public void onGridMarksExpanded(RouteBoxer.Box[][] boxArray) {}
+
+    @Override
+    public void onMergedAdjointVertically(ArrayList<RouteBoxer.Box> boxes) {}
+
+    @Override
+    public void onMergedAdjointHorizontally(ArrayList<RouteBoxer.Box> boxes) {}
+
+    @Override
+    public void onMergedVertically(ArrayList<RouteBoxer.Box> mergedBoxes) {}
+
+    @Override
+    public void onMergedHorizontally(ArrayList<RouteBoxer.Box> mergedBoxes) {}
+
+    @Override
+    public void onProcess(String processInfo) {
+        RouterBoxerData data = new RouterBoxerData(processInfo);
         publishProgress(data);
     }
 
     @Override
-    public void onGridMarksExpanded(RouteBoxer.Box[][] boxArray, ArrayList<RouteBoxer.Box> boxes) {
-        this.step = 3;
-        RouterBoxerData data = new RouterBoxerData(null, boxes);
-        publishProgress(data);
-    }
+    public void drawLine(RouteBoxer.LatLng origin, RouteBoxer.LatLng destination, int color) {}
 
     @Override
-    public void onMergedAdjointVertically(ArrayList<RouteBoxer.Box> boxes) {
-        step = 7; // or 5
-        RouterBoxerData data = new RouterBoxerData(null, boxes);
-        publishProgress(data);
-    }
+    public void drawBox(RouteBoxer.LatLng origin, RouteBoxer.LatLng destination, int color) {}
 
     @Override
-    public void onMergedAdjointHorizontally(ArrayList<RouteBoxer.Box> boxes) {
-        step = 5; // or 7
-        RouterBoxerData data = new RouterBoxerData(null, boxes);
-        publishProgress(data);
-    }
-
-    @Override
-    public void onMergedVertically(ArrayList<RouteBoxer.Box> mergedBoxes) {
-
-        step = 6;
-        RouterBoxerData data = new RouterBoxerData(null, mergedBoxes);
-        publishProgress(data);
-
-    }
-
-    @Override
-    public void onMergedHorizontally(ArrayList<RouteBoxer.Box> mergedBoxes) {
-
-        step = 8;
-        RouterBoxerData data = new RouterBoxerData(null, mergedBoxes);
-        publishProgress(data);
-
-    }
-
-    @Override
-    public void onProcess(String processInfo, ArrayList<RouteBoxer.Box> boxes) {
-        RouterBoxerData data = new RouterBoxerData(processInfo, boxes);
-        publishProgress(data);
-    }
+    public void clearPolygon() {}
 
     @Override
     protected void onProgressUpdate(RouterBoxerData... values) {
         if(this.iRouteBoxerTask != null) {
             RouterBoxerData data = values[0];
-            String message = data.message;
-            ArrayList<RouteBoxer.Box> boxes = data.boxes;
-            //if(boxes != null)
-            //    this.iRouteBoxerTask.onRouteBoxerBoxPublished(boxes, this.step);
-            if(message != null)
-                this.iRouteBoxerTask.onMessage(message);
-            switch(this.step) {
-                case 1:
-                    break;
+
+            if (data.type == DataType.Message) {
+                if (data.message != null)
+                    this.iRouteBoxerTask.onRouteBoxerMessage(data.message);
+            } else if(data.type == DataType.Boxes){
+                if(data.boxes != null)
+                    this.iRouteBoxerTask.onRouteBoxerBoxes(data.boxes, data.boxBorderColor, data.boxFillColor);
             }
+
         }
     }
 
     public class RouterBoxerData {
 
-        public ArrayList<RouteBoxer.Box> boxes;
-        public String message;
 
-        public RouterBoxerData(String message, ArrayList<RouteBoxer.Box> boxes) {
+        private DataType type = DataType.Message;
+        private ArrayList<RouteBoxer.Box> boxes;
+        private String message;
+        private int boxBorderColor = Color.DKGRAY;
+        private int boxFillColor = Color.GRAY;
+
+        private RouterBoxerData(String message) {
             this.message = message;
-            this.boxes = boxes;
         }
 
+        private RouterBoxerData(ArrayList<RouteBoxer.Box> boxes, int boxBorderColor, int boxFillColor) {
+            this.boxes = boxes;
+            this.type = DataType.Boxes;
+            this.boxBorderColor = boxBorderColor;
+            this.boxFillColor = boxFillColor;
+        }
+
+    }
+
+    private enum DataType {
+        Message, Boxes
+    }
+
+    public interface IRouteBoxerTask {
+
+        void onRouteBoxerTaskComplete(ArrayList<RouteBoxer.Box> boxes);
+        void onRouteBoxerMessage(String message);
+        void onRouteBoxerBoxes(ArrayList<RouteBoxer.Box> boxes, int boxBorderColor, int boxFillColor);
     }
 }
