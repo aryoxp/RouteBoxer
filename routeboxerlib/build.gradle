@@ -4,7 +4,7 @@ apply plugin: 'com.jfrog.bintray'
 
 android {
     compileSdkVersion 25
-    buildToolsVersion '25.0.0'
+    buildToolsVersion '25.0.3'
 
     defaultConfig {
         minSdkVersion 15
@@ -47,7 +47,7 @@ artifacts {
 }
 
 group = 'ap.mobile.routeboxerlib'
-version = '1.0.0'
+version = '1.0.1'
 
 install {
     repositories.mavenInstaller {
@@ -60,7 +60,7 @@ install {
             packaging 'aar'
             groupId 'ap.mobile.routeboxerlib'
             artifactId 'routeboxer'
-            version '0.1.1'
+            version '1.0.1'
 
             licenses {
                 license {
@@ -98,10 +98,10 @@ bintray {
         vcsUrl = 'https://github.com/aryoxp/RouteBoxer.git'
         publish = true
         version {
-            name = 'v1.0.0'
+            name = 'v1.0.1'
             desc = 'RouteBoxer 1.0'
             released = new Date()
-            vcsTag = 'v1.0.0'
+            vcsTag = 'v1.0.1'
         }
     }
 }
