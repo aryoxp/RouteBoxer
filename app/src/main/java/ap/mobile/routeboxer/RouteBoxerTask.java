@@ -2,6 +2,7 @@ package ap.mobile.routeboxer;
 
 import android.graphics.Color;
 import android.os.AsyncTask;
+import android.util.Log;
 
 import com.google.android.gms.maps.model.LatLng;
 
@@ -9,13 +10,14 @@ import java.util.ArrayList;
 
 import ap.mobile.routeboxerlib.RouteBoxer;
 
-public class RouteBoxerTask extends AsyncTask<Void, RouteBoxerTask.RouterBoxerData, ArrayList<RouteBoxer.Box>>
+public class RouteBoxerTask extends AsyncTask<Void, RouteBoxerTask.RouteBoxerData, ArrayList<RouteBoxer.Box>>
         implements RouteBoxer.IRouteBoxer {
 
     private final ArrayList<RouteBoxer.LatLng> route = new ArrayList<>();
     private final int distance;
     private final IRouteBoxerTask iRouteBoxerTask;
     private int step;
+    private Boolean simplify = false;
 
     public RouteBoxerTask(ArrayList<LatLng> route, int distance, IRouteBoxerTask iRouteBoxerTask) {
         for (LatLng point:
@@ -27,9 +29,20 @@ public class RouteBoxerTask extends AsyncTask<Void, RouteBoxerTask.RouterBoxerDa
         this.iRouteBoxerTask = iRouteBoxerTask;
     }
 
+    public RouteBoxerTask(ArrayList<LatLng> route, int distance, boolean simplifyRoute, IRouteBoxerTask iRouteBoxerTask) {
+        for (LatLng point:
+                route) {
+            RouteBoxer.LatLng latLng = new RouteBoxer.LatLng(point.latitude, point.longitude);
+            this.route.add(latLng);
+        }
+        this.distance = distance;
+        this.simplify = simplifyRoute;
+        this.iRouteBoxerTask = iRouteBoxerTask;
+    }
+
     @Override
     protected ArrayList<RouteBoxer.Box> doInBackground(Void... params) {
-        RouteBoxer routeBoxer = new RouteBoxer(route, distance);
+        RouteBoxer routeBoxer = new RouteBoxer(route, distance, this.simplify);
         routeBoxer.setRouteBoxerInterface(this);
         return routeBoxer.box();
     }
@@ -53,7 +66,18 @@ public class RouteBoxerTask extends AsyncTask<Void, RouteBoxerTask.RouterBoxerDa
     public void onGridObtained(RouteBoxer.Box[][] boxArray) {}
 
     @Override
-    public void onGridMarked(ArrayList<RouteBoxer.Box> boxes) {}
+    public void onGridMarked(ArrayList<RouteBoxer.Box> boxes) {
+        RouteBoxerData data = new RouteBoxerData(boxes, Color.LTGRAY, Color.GRAY, Color.GREEN);
+        int mark = 0, simpleMark = 0, bothMark = 0, expandMark = 0;
+        for(RouteBoxer.Box box : boxes) {
+            if (box.marked) mark++;
+            if (box.simpleMarked) simpleMark++;
+            if (box.marked && box.simpleMarked) bothMark++;
+            if (box.expandMarked) expandMark++;
+        }
+        Log.d("RouteBoxer", "Marked: " + mark + ", SimpleMark: " + simpleMark + ", OverlapMark: " + bothMark + ", expandMark: " + expandMark );
+        //this.publishProgress(data);
+    }
 
     @Override
     public void onGridMarksExpanded(RouteBoxer.Box[][] boxArray) {}
@@ -72,7 +96,13 @@ public class RouteBoxerTask extends AsyncTask<Void, RouteBoxerTask.RouterBoxerDa
 
     @Override
     public void onProcess(String processInfo) {
-        RouterBoxerData data = new RouterBoxerData(processInfo);
+        RouteBoxerData data = new RouteBoxerData(processInfo);
+        publishProgress(data);
+    }
+
+    @Override
+    public void onRouteSimplified(ArrayList<RouteBoxer.LatLng> simplifiedRoute) {
+        RouteBoxerData data = new RouteBoxerData(simplifiedRoute, Color.argb(128, 0, 0, 200));
         publishProgress(data);
     }
 
@@ -86,22 +116,35 @@ public class RouteBoxerTask extends AsyncTask<Void, RouteBoxerTask.RouterBoxerDa
     public void clearPolygon() {}
 
     @Override
-    protected void onProgressUpdate(RouterBoxerData... values) {
+    protected void onProgressUpdate(RouteBoxerData... values) {
         if(this.iRouteBoxerTask != null) {
-            RouterBoxerData data = values[0];
+            RouteBoxerData data = values[0];
 
             if (data.type == DataType.Message) {
                 if (data.message != null)
                     this.iRouteBoxerTask.onRouteBoxerMessage(data.message);
+            } else if(data.type == DataType.Grid) {
+                if(data.boxes != null) {
+                    this.iRouteBoxerTask.onRouteBoxerGrid(data.boxes, data.lineColor, data.markedColor, data.simpleMarkedColor);
+                }
             } else if(data.type == DataType.Boxes){
                 if(data.boxes != null)
                     this.iRouteBoxerTask.onRouteBoxerBoxes(data.boxes, data.boxBorderColor, data.boxFillColor);
+            } else if(data.type == DataType.Route) {
+                if(data.simplifiedRoute != null) {
+                    ArrayList<LatLng> route = new ArrayList<>();
+                    for (RouteBoxer.LatLng point: data.simplifiedRoute) {
+                        route.add(new LatLng(point.latitude, point.longitude));
+                    }
+                    this.iRouteBoxerTask.onRouteBoxerSimplifiedRoute(route, data.lineColor);
+                }
             }
 
         }
     }
 
-    public class RouterBoxerData {
+    public class RouteBoxerData {
+
 
 
         private DataType type = DataType.Message;
@@ -109,28 +152,48 @@ public class RouteBoxerTask extends AsyncTask<Void, RouteBoxerTask.RouterBoxerDa
         private String message;
         private int boxBorderColor = Color.DKGRAY;
         private int boxFillColor = Color.GRAY;
+        private int lineColor = Color.BLUE;
+        private int markedColor;
+        private int simpleMarkedColor;
+        private ArrayList<RouteBoxer.LatLng> simplifiedRoute;
 
-        private RouterBoxerData(String message) {
+        private RouteBoxerData(String message) {
             this.message = message;
         }
 
-        private RouterBoxerData(ArrayList<RouteBoxer.Box> boxes, int boxBorderColor, int boxFillColor) {
+        private RouteBoxerData(ArrayList<RouteBoxer.Box> boxes, int boxBorderColor, int boxFillColor) {
             this.boxes = boxes;
             this.type = DataType.Boxes;
             this.boxBorderColor = boxBorderColor;
             this.boxFillColor = boxFillColor;
         }
 
+        public RouteBoxerData(ArrayList<RouteBoxer.LatLng> simplifiedRoute, int lineColor) {
+            this.type = DataType.Route;
+            this.simplifiedRoute = simplifiedRoute;
+            this.lineColor = lineColor;
+        }
+
+        public RouteBoxerData(ArrayList<RouteBoxer.Box> boxes, int lineColor, int markedColor, int simpleMarkedColor) {
+            this.type = DataType.Grid;
+            this.boxes = boxes;
+            this.lineColor = lineColor;
+            this.markedColor = markedColor;
+            this.simpleMarkedColor = simpleMarkedColor;
+        }
     }
 
     private enum DataType {
-        Message, Boxes
+        Message, Boxes, Route, Grid
     }
 
     public interface IRouteBoxerTask {
 
         void onRouteBoxerTaskComplete(ArrayList<RouteBoxer.Box> boxes);
         void onRouteBoxerMessage(String message);
+        void onRouteBoxerGrid(ArrayList<RouteBoxer.Box> boxes, int boxBorderColor, int markedColor, int simpleMarkedColor);
         void onRouteBoxerBoxes(ArrayList<RouteBoxer.Box> boxes, int boxBorderColor, int boxFillColor);
+        void onRouteBoxerSimplifiedRoute(ArrayList<LatLng> simplifiedRoute, int lineColor);
+
     }
 }

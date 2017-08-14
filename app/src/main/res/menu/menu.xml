@@ -3,13 +3,13 @@
 
     <!-- Settings, should always be in the overflow -->
     <item android:id="@+id/action_settings"
-        android:icon="@drawable/ic_setting_dark"
+        android:icon="@drawable/ic_action_settings"
         android:title="@string/settings"
         app:showAsAction="always"
         />
 
     <item android:id="@+id/action_test"
-        android:icon="@drawable/ic_media_route_off_mono_dark"
+        android:icon="@drawable/ic_action_call_split"
         android:title="Testing"
         app:showAsAction="always" />
 

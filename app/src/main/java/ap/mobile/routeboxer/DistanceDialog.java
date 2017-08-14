@@ -3,25 +3,33 @@ package ap.mobile.routeboxer;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.Dialog;
+import android.content.Context;
 import android.content.DialogInterface;
 import android.os.Bundle;
+import android.preference.PreferenceManager;
 import android.support.annotation.NonNull;
 import android.support.v4.app.DialogFragment;
 import android.view.LayoutInflater;
 import android.view.View;
+import android.widget.CheckBox;
+import android.widget.CompoundButton;
 import android.widget.SeekBar;
 import android.widget.TextView;
 
 /**
  * Created by aryo on 31/1/16.
  */
-public class DistanceDialog extends DialogFragment implements SeekBar.OnSeekBarChangeListener {
+public class DistanceDialog extends DialogFragment implements SeekBar.OnSeekBarChangeListener, CompoundButton.OnCheckedChangeListener {
 
     private DialogInterface.OnClickListener distanceDialogListener;
     private SeekBar seekbarDistance;
     private TextView textviewDistance;
+    private CheckBox cbSimplify;
 
     public float distance;
+    private boolean useSimplify = true;
+    private Context context;
+
 
     @NonNull
     @Override
@@ -36,13 +44,19 @@ public class DistanceDialog extends DialogFragment implements SeekBar.OnSeekBarC
                 .setTitle("Box distance")
                 .setPositiveButton("OK", this.distanceDialogListener)
                 .setNegativeButton("Cancel", this.distanceDialogListener);
+
+        this.cbSimplify = (CheckBox)dialog.findViewById(R.id.check_simplify);
+        this.cbSimplify.setChecked(this.useSimplify);
+        this.cbSimplify.setOnCheckedChangeListener(this);
         return builder.create();
     }
 
     @Override
-    public void onAttach(Activity activity) {
-        this.distanceDialogListener = (DialogInterface.OnClickListener) activity;
-        super.onAttach(activity);
+    public void onAttach(Context context) {
+        this.distanceDialogListener = (DialogInterface.OnClickListener) context;
+        this.context = context;
+        this.useSimplify = PreferenceManager.getDefaultSharedPreferences(context).getBoolean("pref_simplify", true);
+        super.onAttach(context);
     }
 
     @Override
@@ -60,5 +74,10 @@ public class DistanceDialog extends DialogFragment implements SeekBar.OnSeekBarC
 
     public void setDistance(int distance) {
         this.distance = (float)distance;
+    }
+
+    @Override
+    public void onCheckedChanged(CompoundButton compoundButton, boolean b) {
+        PreferenceManager.getDefaultSharedPreferences(this.context).edit().putBoolean("pref_simplify", b).apply();
     }
 }

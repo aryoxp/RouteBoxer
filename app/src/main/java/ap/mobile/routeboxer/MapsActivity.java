@@ -6,11 +6,16 @@ import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.location.Location;
 import android.os.AsyncTask;
+import android.os.Build;
 import android.os.Bundle;
+import android.os.Environment;
 import android.os.Handler;
+import android.preference.PreferenceManager;
+import android.support.annotation.NonNull;
 import android.support.v4.app.ActivityCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
+import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 
@@ -24,17 +29,30 @@ import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
 import com.google.android.gms.maps.UiSettings;
 import com.google.android.gms.maps.model.BitmapDescriptorFactory;
+import com.google.android.gms.maps.model.Dash;
+import com.google.android.gms.maps.model.Dot;
+import com.google.android.gms.maps.model.Gap;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.LatLngBounds;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
+import com.google.android.gms.maps.model.PatternItem;
 import com.google.android.gms.maps.model.Polygon;
 import com.google.android.gms.maps.model.PolygonOptions;
 import com.google.android.gms.maps.model.Polyline;
 import com.google.android.gms.maps.model.PolylineOptions;
 
+import java.io.BufferedReader;
+import java.io.DataInputStream;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.Serializable;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 import java.util.Random;
 
 import ap.mobile.routeboxer.helper.FileHelper;
@@ -54,7 +72,7 @@ public class MapsActivity extends AppCompatActivity
     private int distance = 200; // meter
 
     private LatLngBounds bounds;
-    private Polyline routePolyline;
+    private Polyline routePolyline, simplifiedRoutePolyline;
     private GoogleApiClient mGoogleApiClient;
     private Marker originMarker;
     private Marker destinationMarker;
@@ -62,11 +80,13 @@ public class MapsActivity extends AppCompatActivity
     private LatLng origin;
     private ArrayList<RouteBoxer.Box> boxes;
     private ArrayList<Polygon> boxPolygons;
+    private ArrayList<Polygon> gridBoxes;
     private DistanceDialog dialog;
     private float defaultZoom = 13;
     private TestingDialog testDialog;
     private MaterialDialog myTestDialog;
     private MaterialDialog routeBoxProcessDialog;
+    private String json;
 
 
     @Override
@@ -163,10 +183,24 @@ public class MapsActivity extends AppCompatActivity
 
     }
 
+    public static class Route implements Serializable {
+        public ArrayList<LatLng> points;
+        public Route(ArrayList<LatLng> points){
+            this.points = points;
+        }
+    }
+
     @Override
     public void onJSONRouteLoaded(ArrayList<LatLng> route) {
-        RouteBoxerTask routeBoxerTask = new RouteBoxerTask(route, this.distance, this);
+
+        Route r = new Route(route);
+        Log.d("RouteBoxer", r.toString());
+
+        boolean simplify = PreferenceManager.getDefaultSharedPreferences(this).getBoolean("pref_simplify", true);
+
+        RouteBoxerTask routeBoxerTask = new RouteBoxerTask(route, this.distance, simplify, this);
         routeBoxerTask.execute();
+
         PolylineOptions polylineOptions = new PolylineOptions()
                 .color(Color.RED)
                 .width(8);
@@ -175,6 +209,7 @@ public class MapsActivity extends AppCompatActivity
         if (this.routePolyline != null)
             this.routePolyline.remove();
         this.routePolyline = this.mMap.addPolyline(polylineOptions);
+        //this.routePolyline.setPattern(Arrays.asList(new Dash(30), new Gap(10)));
         if (this.boxPolygons == null)
             this.boxPolygons = new ArrayList<>();
         else {
@@ -182,12 +217,115 @@ public class MapsActivity extends AppCompatActivity
                 polygon.remove();
             }
         }
+
+        if(this.gridBoxes != null) {
+            for(Polygon polygon: this.gridBoxes)
+                polygon.remove();
+        }
+    }
+
+    @Override
+    public void routeJsonObtained(String json) {
+
+        this.json = json;
+        if(isStoragePermissionGranted())
+            this.writeJsonToFile(json);
+
     }
 
 
+
+    private static boolean isExternalStorageReadOnly() {
+        String extStorageState = Environment.getExternalStorageState();
+        if (Environment.MEDIA_MOUNTED_READ_ONLY.equals(extStorageState)) {
+            return true;
+        }
+        return false;
+    }
+
+    private static boolean isExternalStorageAvailable() {
+        String extStorageState = Environment.getExternalStorageState();
+        if (Environment.MEDIA_MOUNTED.equals(extStorageState)) {
+            return true;
+        }
+        return false;
+    }
+
+    public boolean isStoragePermissionGranted() {
+        if (Build.VERSION.SDK_INT >= 23) {
+            if (checkSelfPermission(android.Manifest.permission.WRITE_EXTERNAL_STORAGE)
+                    == PackageManager.PERMISSION_GRANTED) {
+                Log.v("RouteBoxer","Permission is granted");
+                return true;
+            } else {
+
+                Log.v("RouteBoxer","Permission is revoked");
+                ActivityCompat.requestPermissions(this, new String[]{android.Manifest.permission.WRITE_EXTERNAL_STORAGE}, 1);
+                return false;
+            }
+        }
+        else { //permission is automatically granted on sdk<23 upon installation
+            Log.v("RouteBoxer","Permission is granted");
+            return true;
+        }
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if(requestCode == 1 && grantResults[0]== PackageManager.PERMISSION_GRANTED)
+            this.writeJsonToFile(this.json);
+    }
+
+    private void writeJsonToFile(String json) {
+        if (isExternalStorageAvailable() && !isExternalStorageReadOnly()) {
+            //saveButton.setEnabled(false);
+
+            String filepath = "RouteBoxer";
+            String indexFilename = "idx.txt";
+            int index = 0;
+
+            File indexFile = new File(getExternalFilesDir(filepath), indexFilename);
+            String myData = "";
+
+            try {
+                FileInputStream fis = new FileInputStream(indexFile);
+                DataInputStream in = new DataInputStream(fis);
+                BufferedReader br =
+                        new BufferedReader(new InputStreamReader(in));
+                String strLine;
+                while ((strLine = br.readLine()) != null) {
+                    myData = myData + strLine;
+                }
+                in.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+
+            if(myData == "") index = 0;
+            else index = Integer.valueOf(myData);
+
+            try {
+                FileOutputStream fos = new FileOutputStream(new File(getExternalFilesDir(filepath), "route-" + index + ".txt"));
+                fos.write(json.getBytes());
+                fos.close();
+
+                index++;
+
+                fos = new FileOutputStream(indexFile);
+                fos.write(String.valueOf(index).getBytes());
+                fos.close();
+
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+
+        }
+    }
+
     @Override
     public void onRouteBoxerTaskComplete(ArrayList<RouteBoxer.Box> boxes) {
-        this.draw(boxes, Color.GRAY, Color.argb(15, 255, 0, 0));
+        this.draw(boxes, Color.argb(200, 255, 0, 0), Color.argb(15, 255, 0, 0));
         if(this.routeBoxProcessDialog != null && this.routeBoxProcessDialog.isShowing())
             this.routeBoxProcessDialog.dismiss();
     }
@@ -199,7 +337,50 @@ public class MapsActivity extends AppCompatActivity
     }
 
     @Override
+    public void onRouteBoxerGrid(ArrayList<RouteBoxer.Box> boxes, int boxBorderColor, int markedColor, int simpleMarkedColor) {
+        if(this.gridBoxes == null)
+            this.gridBoxes = new ArrayList<>();
+        else this.gridBoxes.clear();
+
+        for (RouteBoxer.Box box : boxes) {
+            LatLng nw = new LatLng(box.ne.latitude, box.sw.longitude);
+            LatLng se = new LatLng(box.sw.latitude, box.ne.longitude);
+            LatLng sw = new LatLng(box.sw.latitude, box.sw.longitude);
+            LatLng ne = new LatLng(box.ne.latitude, box.ne.longitude);
+            PolygonOptions polygonOptions = new PolygonOptions()
+                    .add(sw, nw, ne, se, sw)
+                    .strokeColor(boxBorderColor)
+                    .strokeWidth(3);
+            if (box.simpleMarked) {
+                polygonOptions.strokeColor(boxBorderColor)
+                        .fillColor(simpleMarkedColor);
+            } else if (box.marked) {
+                polygonOptions.strokeColor(boxBorderColor)
+                        .fillColor(markedColor);
+            } else
+                polygonOptions.fillColor(Color.TRANSPARENT);
+            Polygon boxPolygon = mMap.addPolygon(polygonOptions);
+            this.gridBoxes.add(boxPolygon);
+        }
+    }
+
+    @Override
     public void onRouteBoxerBoxes(ArrayList<RouteBoxer.Box> boxes, int boxBorderColor, int boxFillColor) {}
+
+    @Override
+    public void onRouteBoxerSimplifiedRoute(ArrayList<LatLng> simplifiedRoute, int lineColor) {
+        PolylineOptions polylineOptions = new PolylineOptions()
+                .color(lineColor)
+                .width(8);
+        for (LatLng point : simplifiedRoute)
+            polylineOptions.add(point);
+        if (this.simplifiedRoutePolyline != null)
+            this.simplifiedRoutePolyline.remove();
+        this.simplifiedRoutePolyline = this.mMap.addPolyline(polylineOptions);
+        List<PatternItem> pattern = Arrays.asList(
+                new Dash(30), new Gap(10));
+        this.simplifiedRoutePolyline.setPattern(pattern);
+    }
 
     private void draw(ArrayList<RouteBoxer.Box> boxes, int color, int fillColor) {
 
@@ -354,15 +535,13 @@ public class MapsActivity extends AppCompatActivity
 
             case R.id.action_test:
 
-
-
+                /*
                 this.testDialog = new TestingDialog();
                 this.testDialog.show(this.getSupportFragmentManager(), "testingDialog");
 
                 this.testDialog.text("Getting path...");
                 handler.postDelayed(waitRunnable, 1);
                 bpNum = 0;
-
 
                 IMaps vIMaps = new IMaps() {
                     @Override
@@ -471,7 +650,7 @@ public class MapsActivity extends AppCompatActivity
                     this.testDialog.text(ex.getMessage());
                 }
                 //this.testDialog.dismiss();
-
+                */
 
                 return true;
         }

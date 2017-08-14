@@ -2,11 +2,14 @@ package ap.mobile.routeboxerlib;
 
 import java.util.ArrayList;
 
+import ap.mobile.douglaspeuckerlib.DouglasPeucker;
+
 public class RouteBoxer {
 
-    private final ArrayList<RouteBoxer.LatLng> route;
-    private final int distance;
-    private final double degree;
+    private ArrayList<RouteBoxer.LatLng> route;
+    private int distance;
+    private double degree;
+    private Boolean simplify = false;
     private RouteBoxer.LatLngBounds bounds;
     private RouteBoxer.IRouteBoxer iRouteBoxer;
     private ArrayList<RouteBoxer.Box> boxes = new ArrayList<>();
@@ -17,6 +20,11 @@ public class RouteBoxer {
         this.route = route;
         this.distance = distance;
         this.degree = this.distance / 1.1132 * 0.00001;
+    }
+
+    public RouteBoxer(ArrayList<LatLng> route, int distance, Boolean simplify) {
+        this(route, distance);
+        this.simplify = simplify;
     }
 
     public void setRouteBoxerInterface(RouteBoxer.IRouteBoxer iRouteBoxer) {
@@ -38,9 +46,6 @@ public class RouteBoxer {
 
         if(this.iRouteBoxer != null)
             this.iRouteBoxer.onProcess("Initializing...");
-
-
-
 
         // Getting bounds
 
@@ -125,7 +130,21 @@ public class RouteBoxer {
         }
 
         // step 2: Traverse all points and mark grid which contains it.
-        alignedBoxes = this.traversePointsAndMarkGrids(alignedBoxes);
+        if(!this.simplify)
+            alignedBoxes = this.traversePointsAndMarkGrids(alignedBoxes, this.route);
+        else {
+            ArrayList<DouglasPeucker.Point> complexRoute = new ArrayList<>();
+            for (RouteBoxer.LatLng latLng: this.route) {
+                complexRoute.add(new DouglasPeucker.Point(latLng.latitude, latLng.longitude));
+            }
+            ArrayList<DouglasPeucker.Point> simplifiedRoute = new DouglasPeucker().simplify(complexRoute, this.distance);
+            ArrayList<LatLng> newSimplifiedRoute = new ArrayList<>();
+            for(DouglasPeucker.Point point : simplifiedRoute)
+                newSimplifiedRoute.add(new LatLng(point.latitude, point.longitude));
+            if(this.iRouteBoxer != null)
+                this.iRouteBoxer.onRouteSimplified(newSimplifiedRoute);
+            alignedBoxes = this.traversePointsAndMarkGrids(alignedBoxes, newSimplifiedRoute);
+        }
 
         if(this.iRouteBoxer != null)
             this.iRouteBoxer.onProcess("Expanding cell marks...");
@@ -164,7 +183,8 @@ public class RouteBoxer {
 
     }
 
-    private RouteBoxer.Box[][] traversePointsAndMarkGrids(RouteBoxer.Box[][] boxArray) {
+    private RouteBoxer.Box[][] traversePointsAndMarkGrids(RouteBoxer.Box[][] boxArray,
+                                                          ArrayList<RouteBoxer.LatLng> route) {
         int sizeX = boxArray.length;
         int sizeY = boxArray[0].length;
 
@@ -172,7 +192,7 @@ public class RouteBoxer {
         LatLng origin = null, destination;
         //ArrayList<Line> lines = new ArrayList<>();
 
-        for (RouteBoxer.LatLng point : this.route) {
+        for (RouteBoxer.LatLng point : route) {
 
             Line l = null;
             double ay1 = 0, ay2 = 0, ax2 = 0, ax1 = 0;
@@ -249,6 +269,194 @@ public class RouteBoxer {
 
                         // if the line intersect with current box, mark it!
                         if (l.intersect(bx.sw, bx.ne)) bx.mark();
+                    }
+                }
+            }
+        }
+
+        if(this.iRouteBoxer != null) {
+            this.iRouteBoxer.onProcess("Traversing and marking complete...");
+            this.iRouteBoxer.onGridMarked(this.boxes);
+        }
+
+        return boxArray;
+
+    }
+
+    private RouteBoxer.Box[][] traversePointsAndMarkGridsBothRoute(RouteBoxer.Box[][] boxArray,
+                                                          ArrayList<RouteBoxer.LatLng> route,
+                                                          ArrayList<RouteBoxer.LatLng> simplifiedRoute) {
+        int sizeX = boxArray.length;
+        int sizeY = boxArray[0].length;
+
+        int i=0;
+        LatLng origin = null, destination;
+        //ArrayList<Line> lines = new ArrayList<>();
+
+        for (RouteBoxer.LatLng point : route) {
+
+            Line l = null;
+            double ay1 = 0, ay2 = 0, ax2 = 0, ax1 = 0;
+
+            if (i == 0) {
+                origin = point;
+            } else {
+                destination = point;
+                // finding line bounding box
+                l = new Line(origin, destination);
+                //lines.add(l);
+                origin = destination;
+            }
+
+            if (l != null) {
+                ay1 = Math.abs((l.origin.latitude > l.destination.latitude) ? l.origin.latitude : l.destination.latitude);
+                ay2 = Math.abs((l.origin.latitude < l.destination.latitude) ? l.origin.latitude : l.destination.latitude);
+                ax2 = Math.abs((l.origin.longitude > l.destination.longitude) ? l.origin.longitude : l.destination.longitude);
+                ax1 = Math.abs((l.origin.longitude < l.destination.longitude) ? l.origin.longitude : l.destination.longitude);
+            }
+
+            i++;
+
+            for (int x = 0; x < sizeX; x++) {
+                for (int y = 0; y < sizeY; y++) {
+                    RouteBoxer.Box bx = boxArray[x][y];
+                    if (bx.marked) continue;
+                    if (point.latitude > bx.sw.latitude
+                            && point.latitude < bx.ne.latitude
+                            && point.longitude > bx.sw.longitude
+                            && point.longitude < bx.ne.longitude) {
+                        bx.mark();
+                        /* // previous algorithm to mark boxes in between marked boxes
+                        if (lastBox == null)
+                            lastBox = bx;
+                        else {
+
+                            int lastX = lastBox.x;
+                            int lastY = lastBox.y;
+                            int diffX = bx.x - lastX;
+                            int diffY = bx.y - lastY;
+                            if(diffX < 1) {
+                                for(int dx = bx.x - diffX - 1; dx > bx.x; dx--)
+                                    boxArray[dx][lastBox.y].mark();
+                            }
+                            if(diffX > 1) {
+                                for(int dx = bx.x - diffX + 1; dx < bx.x; dx++)
+                                    boxArray[dx][lastBox.y].mark();
+                            }
+                            if(diffY < 1){
+                                for(int dy = bx.y - diffY - 1; dy > bx.y; dy--)
+                                    boxArray[lastBox.x][dy].mark();
+                            }
+                            if(diffY > 1) {
+                                for(int dy = bx.y - diffY + 1; dy < bx.y; dy++)
+                                    boxArray[lastBox.x][dy].mark();
+                            }
+
+                            lastBox = bx;
+                        }
+                        */
+                    }
+
+                    // if a line exists
+                    if (l != null) {
+                        // find box bounds
+                        double bx2 = Math.abs(bx.se.longitude);
+                        double bx1 = Math.abs(bx.nw.longitude);
+                        double by2 = Math.abs(bx.se.latitude);
+                        double by1 = Math.abs(bx.nw.latitude);
+
+                        // if box of line and grid box intersect
+                        if (!(ax1 <= bx2 && ax2 >= bx1 && ay1 <= by2 && ay2 >= by1)) continue;
+
+                        // if the line intersect with current box, mark it!
+                        if (l.intersect(bx.sw, bx.ne)) bx.mark();
+                    }
+                }
+            }
+        }
+
+
+        if(simplifiedRoute != null) {
+            i = 0;
+
+            for (RouteBoxer.LatLng point : simplifiedRoute) {
+
+                Line l = null;
+                double ay1 = 0, ay2 = 0, ax2 = 0, ax1 = 0;
+
+                if (i == 0) {
+                    origin = point;
+                } else {
+                    destination = point;
+                    // finding line bounding box
+                    l = new Line(origin, destination);
+                    //lines.add(l);
+                    origin = destination;
+                }
+
+                if (l != null) {
+                    ay1 = Math.abs((l.origin.latitude > l.destination.latitude) ? l.origin.latitude : l.destination.latitude);
+                    ay2 = Math.abs((l.origin.latitude < l.destination.latitude) ? l.origin.latitude : l.destination.latitude);
+                    ax2 = Math.abs((l.origin.longitude > l.destination.longitude) ? l.origin.longitude : l.destination.longitude);
+                    ax1 = Math.abs((l.origin.longitude < l.destination.longitude) ? l.origin.longitude : l.destination.longitude);
+                }
+
+                i++;
+
+                for (int x = 0; x < sizeX; x++) {
+                    for (int y = 0; y < sizeY; y++) {
+                        RouteBoxer.Box bx = boxArray[x][y];
+                        if (bx.simpleMarked) continue;
+                        if (point.latitude > bx.sw.latitude
+                                && point.latitude < bx.ne.latitude
+                                && point.longitude > bx.sw.longitude
+                                && point.longitude < bx.ne.longitude) {
+                            bx.simpleMark();
+                        /* // previous algorithm to mark boxes in between marked boxes
+                        if (lastBox == null)
+                            lastBox = bx;
+                        else {
+
+                            int lastX = lastBox.x;
+                            int lastY = lastBox.y;
+                            int diffX = bx.x - lastX;
+                            int diffY = bx.y - lastY;
+                            if(diffX < 1) {
+                                for(int dx = bx.x - diffX - 1; dx > bx.x; dx--)
+                                    boxArray[dx][lastBox.y].mark();
+                            }
+                            if(diffX > 1) {
+                                for(int dx = bx.x - diffX + 1; dx < bx.x; dx++)
+                                    boxArray[dx][lastBox.y].mark();
+                            }
+                            if(diffY < 1){
+                                for(int dy = bx.y - diffY - 1; dy > bx.y; dy--)
+                                    boxArray[lastBox.x][dy].mark();
+                            }
+                            if(diffY > 1) {
+                                for(int dy = bx.y - diffY + 1; dy < bx.y; dy++)
+                                    boxArray[lastBox.x][dy].mark();
+                            }
+
+                            lastBox = bx;
+                        }
+                        */
+                        }
+
+                        // if a line exists
+                        if (l != null) {
+                            // find box bounds
+                            double bx2 = Math.abs(bx.se.longitude);
+                            double bx1 = Math.abs(bx.nw.longitude);
+                            double by2 = Math.abs(bx.se.latitude);
+                            double by1 = Math.abs(bx.nw.latitude);
+
+                            // if box of line and grid box intersect
+                            if (!(ax1 <= bx2 && ax2 >= bx1 && ay1 <= by2 && ay2 >= by1)) continue;
+
+                            // if the line intersect with current box, mark it!
+                            if (l.intersect(bx.sw, bx.ne)) bx.simpleMark();
+                        }
                     }
                 }
             }
@@ -427,6 +635,7 @@ public class RouteBoxer {
         void onMergedVertically(ArrayList<RouteBoxer.Box> mergedBoxes);
         void onMergedHorizontally(ArrayList<RouteBoxer.Box> mergedBoxes);
         void onProcess(String processInfo);
+        void onRouteSimplified(ArrayList<RouteBoxer.LatLng> simplifiedRoute);
         void drawLine(LatLng origin, LatLng destination, int color);
         void drawBox(LatLng origin, LatLng destination, int yellow);
         void clearPolygon();
@@ -438,6 +647,7 @@ public class RouteBoxer {
         private int y;
 
         public Boolean marked = false;
+        public Boolean simpleMarked = false;
         public Boolean expandMarked = false;
         public Boolean merged = false;
 
@@ -445,6 +655,7 @@ public class RouteBoxer {
         public RouteBoxer.LatLng sw;
         private RouteBoxer.LatLng nw;
         private RouteBoxer.LatLng se;
+
 
         private Box() {}
 
@@ -462,6 +673,7 @@ public class RouteBoxer {
         }
 
         private RouteBoxer.Box mark() { this.marked = true; return this; }
+        private RouteBoxer.Box simpleMark() { this.simpleMarked = true; return this; }
         private RouteBoxer.Box unmark() { this.marked = false; return this; }
         private RouteBoxer.Box expandMark() { this.expandMarked = true; return this; }
         private RouteBoxer.Box unexpandMark() { this.expandMarked = false; return this; }
