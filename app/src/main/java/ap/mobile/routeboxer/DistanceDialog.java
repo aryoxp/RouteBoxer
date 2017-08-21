@@ -28,7 +28,9 @@ public class DistanceDialog extends DialogFragment implements SeekBar.OnSeekBarC
 
     public float distance;
     private boolean useSimplify = true;
+    private boolean runBoth = false;
     private Context context;
+    private CheckBox cbRunBoth;
 
 
     @NonNull
@@ -48,6 +50,10 @@ public class DistanceDialog extends DialogFragment implements SeekBar.OnSeekBarC
         this.cbSimplify = (CheckBox)dialog.findViewById(R.id.check_simplify);
         this.cbSimplify.setChecked(this.useSimplify);
         this.cbSimplify.setOnCheckedChangeListener(this);
+
+        this.cbRunBoth = (CheckBox)dialog.findViewById(R.id.check_runboth);
+        this.cbRunBoth.setChecked(this.runBoth);
+        this.cbRunBoth.setOnCheckedChangeListener(this);
         return builder.create();
     }
 
@@ -56,6 +62,7 @@ public class DistanceDialog extends DialogFragment implements SeekBar.OnSeekBarC
         this.distanceDialogListener = (DialogInterface.OnClickListener) context;
         this.context = context;
         this.useSimplify = PreferenceManager.getDefaultSharedPreferences(context).getBoolean("pref_simplify", true);
+        this.runBoth = PreferenceManager.getDefaultSharedPreferences(context).getBoolean("pref_runboth", false);
         super.onAttach(context);
     }
 
@@ -78,6 +85,13 @@ public class DistanceDialog extends DialogFragment implements SeekBar.OnSeekBarC
 
     @Override
     public void onCheckedChanged(CompoundButton compoundButton, boolean b) {
-        PreferenceManager.getDefaultSharedPreferences(this.context).edit().putBoolean("pref_simplify", b).apply();
+        switch(compoundButton.getId()) {
+            case R.id.check_simplify:
+                PreferenceManager.getDefaultSharedPreferences(this.context).edit().putBoolean("pref_simplify", b).apply();
+                break;
+            case R.id.check_runboth:
+                PreferenceManager.getDefaultSharedPreferences(this.context).edit().putBoolean("pref_runboth", b).apply();
+                break;
+        }
     }
 }

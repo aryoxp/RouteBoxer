@@ -18,6 +18,7 @@ public class RouteBoxerTask extends AsyncTask<Void, RouteBoxerTask.RouteBoxerDat
     private final IRouteBoxerTask iRouteBoxerTask;
     private int step;
     private Boolean simplify = false;
+    private Boolean runBoth = false;
 
     public RouteBoxerTask(ArrayList<LatLng> route, int distance, IRouteBoxerTask iRouteBoxerTask) {
         for (LatLng point:
@@ -29,7 +30,11 @@ public class RouteBoxerTask extends AsyncTask<Void, RouteBoxerTask.RouteBoxerDat
         this.iRouteBoxerTask = iRouteBoxerTask;
     }
 
-    public RouteBoxerTask(ArrayList<LatLng> route, int distance, boolean simplifyRoute, IRouteBoxerTask iRouteBoxerTask) {
+    public RouteBoxerTask(ArrayList<LatLng> route, int distance, boolean simplifyRoute, boolean runBoth, IRouteBoxerTask iRouteBoxerTask) {
+        this(route, distance, iRouteBoxerTask);
+        this.simplify = simplifyRoute;
+        this.runBoth = runBoth;
+        /*
         for (LatLng point:
                 route) {
             RouteBoxer.LatLng latLng = new RouteBoxer.LatLng(point.latitude, point.longitude);
@@ -38,11 +43,12 @@ public class RouteBoxerTask extends AsyncTask<Void, RouteBoxerTask.RouteBoxerDat
         this.distance = distance;
         this.simplify = simplifyRoute;
         this.iRouteBoxerTask = iRouteBoxerTask;
+        */
     }
 
     @Override
     protected ArrayList<RouteBoxer.Box> doInBackground(Void... params) {
-        RouteBoxer routeBoxer = new RouteBoxer(route, distance, this.simplify);
+        RouteBoxer routeBoxer = new RouteBoxer(route, distance, this.simplify, this.runBoth);
         routeBoxer.setRouteBoxerInterface(this);
         return routeBoxer.box();
     }
@@ -67,7 +73,7 @@ public class RouteBoxerTask extends AsyncTask<Void, RouteBoxerTask.RouteBoxerDat
 
     @Override
     public void onGridMarked(ArrayList<RouteBoxer.Box> boxes) {
-        RouteBoxerData data = new RouteBoxerData(boxes, Color.LTGRAY, Color.GRAY, Color.GREEN);
+        RouteBoxerData data = new RouteBoxerData(boxes, Color.LTGRAY, Color.GRAY, Color.argb(128, 77, 129, 214));
         int mark = 0, simpleMark = 0, bothMark = 0, expandMark = 0;
         for(RouteBoxer.Box box : boxes) {
             if (box.marked) mark++;
@@ -76,7 +82,7 @@ public class RouteBoxerTask extends AsyncTask<Void, RouteBoxerTask.RouteBoxerDat
             if (box.expandMarked) expandMark++;
         }
         Log.d("RouteBoxer", "Marked: " + mark + ", SimpleMark: " + simpleMark + ", OverlapMark: " + bothMark + ", expandMark: " + expandMark );
-        //this.publishProgress(data);
+        this.publishProgress(data);
     }
 
     @Override

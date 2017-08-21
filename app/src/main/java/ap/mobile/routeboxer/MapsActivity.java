@@ -197,8 +197,9 @@ public class MapsActivity extends AppCompatActivity
         Log.d("RouteBoxer", r.toString());
 
         boolean simplify = PreferenceManager.getDefaultSharedPreferences(this).getBoolean("pref_simplify", true);
+        boolean runBoth = PreferenceManager.getDefaultSharedPreferences(this).getBoolean("pref_runboth", false);
 
-        RouteBoxerTask routeBoxerTask = new RouteBoxerTask(route, this.distance, simplify, this);
+        RouteBoxerTask routeBoxerTask = new RouteBoxerTask(route, this.distance, simplify, runBoth, this);
         routeBoxerTask.execute();
 
         PolylineOptions polylineOptions = new PolylineOptions()
@@ -369,6 +370,9 @@ public class MapsActivity extends AppCompatActivity
 
     @Override
     public void onRouteBoxerSimplifiedRoute(ArrayList<LatLng> simplifiedRoute, int lineColor) {
+        boolean simplify = PreferenceManager.getDefaultSharedPreferences(this).getBoolean("pref_simplify", true);
+        if(!simplify) return;
+
         PolylineOptions polylineOptions = new PolylineOptions()
                 .color(lineColor)
                 .width(8);
@@ -473,7 +477,7 @@ public class MapsActivity extends AppCompatActivity
         MarkerOptions destinationMarkerOptions = new MarkerOptions()
                 .title("Destination")
                 .position(this.destination)
-                .snippet("Click to route box from your location.");
+                .snippet("Tap to RouteBox");
 
         if(this.destinationMarker != null)
             this.destinationMarker.remove();
@@ -497,14 +501,14 @@ public class MapsActivity extends AppCompatActivity
             RouteTask routeTask = new RouteTask(this, this.origin, this.destination);
             if (routeTask.getStatus() == AsyncTask.Status.PENDING)
                 routeTask.execute();
-
+            /*
             this.routeBoxProcessDialog = new MaterialDialog.Builder(this)
                     .cancelable(false)
                     .content("Obtaining boxes...")
                     .progress(true, 0)
                     .progressIndeterminateStyle(true)
                     .show();
-
+            */
         }
     }
 

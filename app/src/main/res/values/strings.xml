@@ -3,4 +3,5 @@
     <string name="title_activity_maps">RouteBoxer</string>
     <string name="settings">Settings</string>
     <string name="action_simplify">Simplify using Douglas-Peucker algorithm</string>
+    <string name="action_runboth">Run both algorithm simultaneously</string>
 </resources>

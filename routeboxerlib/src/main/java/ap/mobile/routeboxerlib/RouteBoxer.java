@@ -10,6 +10,7 @@ public class RouteBoxer {
     private int distance;
     private double degree;
     private Boolean simplify = false;
+    private Boolean runBoth = false;
     private RouteBoxer.LatLngBounds bounds;
     private RouteBoxer.IRouteBoxer iRouteBoxer;
     private ArrayList<RouteBoxer.Box> boxes = new ArrayList<>();
@@ -22,9 +23,10 @@ public class RouteBoxer {
         this.degree = this.distance / 1.1132 * 0.00001;
     }
 
-    public RouteBoxer(ArrayList<LatLng> route, int distance, Boolean simplify) {
+    public RouteBoxer(ArrayList<LatLng> route, int distance, Boolean simplify, Boolean runBoth) {
         this(route, distance);
         this.simplify = simplify;
+        this.runBoth = runBoth;
     }
 
     public void setRouteBoxerInterface(RouteBoxer.IRouteBoxer iRouteBoxer) {
@@ -130,20 +132,36 @@ public class RouteBoxer {
         }
 
         // step 2: Traverse all points and mark grid which contains it.
-        if(!this.simplify)
-            alignedBoxes = this.traversePointsAndMarkGrids(alignedBoxes, this.route);
-        else {
+        if(!this.runBoth) {
+            if (!this.simplify)
+                alignedBoxes = this.traversePointsAndMarkGrids(alignedBoxes, this.route);
+            else {
+                ArrayList<DouglasPeucker.Point> complexRoute = new ArrayList<>();
+                for (RouteBoxer.LatLng latLng : this.route) {
+                    complexRoute.add(new DouglasPeucker.Point(latLng.latitude, latLng.longitude));
+                }
+                ArrayList<DouglasPeucker.Point> simplifiedRoute = new DouglasPeucker().simplify(complexRoute, this.distance);
+                ArrayList<LatLng> newSimplifiedRoute = new ArrayList<>();
+                for (DouglasPeucker.Point point : simplifiedRoute)
+                    newSimplifiedRoute.add(new LatLng(point.latitude, point.longitude));
+                if (this.iRouteBoxer != null)
+                    this.iRouteBoxer.onRouteSimplified(newSimplifiedRoute);
+                alignedBoxes = this.traversePointsAndMarkGrids(alignedBoxes, newSimplifiedRoute);
+            }
+        } else {
+            // run both
             ArrayList<DouglasPeucker.Point> complexRoute = new ArrayList<>();
-            for (RouteBoxer.LatLng latLng: this.route) {
+            for (RouteBoxer.LatLng latLng : this.route) {
                 complexRoute.add(new DouglasPeucker.Point(latLng.latitude, latLng.longitude));
             }
             ArrayList<DouglasPeucker.Point> simplifiedRoute = new DouglasPeucker().simplify(complexRoute, this.distance);
             ArrayList<LatLng> newSimplifiedRoute = new ArrayList<>();
-            for(DouglasPeucker.Point point : simplifiedRoute)
+            for (DouglasPeucker.Point point : simplifiedRoute)
                 newSimplifiedRoute.add(new LatLng(point.latitude, point.longitude));
-            if(this.iRouteBoxer != null)
+            if (this.iRouteBoxer != null)
                 this.iRouteBoxer.onRouteSimplified(newSimplifiedRoute);
-            alignedBoxes = this.traversePointsAndMarkGrids(alignedBoxes, newSimplifiedRoute);
+            alignedBoxes = this.traversePointsAndMarkGridsBothRoute(alignedBoxes, this.route, newSimplifiedRoute);
+
         }
 
         if(this.iRouteBoxer != null)
@@ -257,6 +275,7 @@ public class RouteBoxer {
                     }
 
                     // if a line exists
+                    /*
                     if (l != null) {
                         // find box bounds
                         double bx2 = Math.abs(bx.se.longitude);
@@ -270,6 +289,7 @@ public class RouteBoxer {
                         // if the line intersect with current box, mark it!
                         if (l.intersect(bx.sw, bx.ne)) bx.mark();
                     }
+                    */
                 }
             }
         }
