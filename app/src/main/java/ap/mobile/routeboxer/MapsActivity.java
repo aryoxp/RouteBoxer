@@ -1,7 +1,11 @@
 package ap.mobile.routeboxer;
 
 import android.app.AlertDialog;
+import android.app.PendingIntent;
+import android.content.Context;
 import android.content.DialogInterface;
+import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.location.Location;
@@ -13,11 +17,14 @@ import android.os.Handler;
 import android.preference.PreferenceManager;
 import android.support.annotation.NonNull;
 import android.support.v4.app.ActivityCompat;
+import android.support.v4.app.NotificationCompat;
+import android.support.v4.app.NotificationManagerCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.widget.Toast;
 
 import com.afollestad.materialdialogs.MaterialDialog;
 import com.google.android.gms.common.ConnectionResult;
@@ -66,6 +73,10 @@ public class MapsActivity extends AppCompatActivity
         GoogleMap.OnInfoWindowClickListener,
         DialogInterface.OnClickListener, TestTask.TestInterface {
 
+    private static final int NOTIFICATION_ID = 99;
+    private static final int WEAR_REQUEST_CODE = 77;
+    private static final int WEAR_REQUEST_CODE_2 = 88;
+
     private Toolbar myToolbar;
     private GoogleMap mMap;
 
@@ -87,6 +98,8 @@ public class MapsActivity extends AppCompatActivity
     private MaterialDialog myTestDialog;
     private MaterialDialog routeBoxProcessDialog;
     private String json;
+    private WearActionReceiver wearActionReceiver;
+    private Context mContext;
 
 
     @Override
@@ -109,6 +122,29 @@ public class MapsActivity extends AppCompatActivity
         SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager()
                 .findFragmentById(R.id.map);
         mapFragment.getMapAsync(this);
+
+        this.mContext = this;
+
+        this.wearActionReceiver = new WearActionReceiver() {
+
+            @Override
+            public void onDismiss() {
+                Toast.makeText(mContext, "Dismissed from Wear", Toast.LENGTH_SHORT).show();
+            }
+
+            @Override
+            public void onRecalculate() {
+                Toast.makeText(mContext, "Recalculate from Wear", Toast.LENGTH_SHORT).show();
+            }
+        };
+
+        this.registerReceiver(this.wearActionReceiver, new IntentFilter(WearActionReceiver.WEAR_ACTION));
+
+
+        //LocalBroadcastManager.getInstance(this).registerReceiver(
+        //        this.wearActionReceiver, new IntentFilter("routeboxer.wearintent")
+        //);
+
 
     }
 
@@ -326,9 +362,35 @@ public class MapsActivity extends AppCompatActivity
 
     @Override
     public void onRouteBoxerTaskComplete(ArrayList<RouteBoxer.Box> boxes) {
-        this.draw(boxes, Color.argb(200, 255, 0, 0), Color.argb(15, 255, 0, 0));
+        this.draw(boxes, Color.argb(128, 255, 0, 0), Color.argb(15, 255, 0, 0));
         if(this.routeBoxProcessDialog != null && this.routeBoxProcessDialog.isShowing())
             this.routeBoxProcessDialog.dismiss();
+        this.showNotification();
+    }
+
+    private void showNotification() {
+        Intent dismissIntent = new Intent(WearActionReceiver.WEAR_ACTION);
+        dismissIntent.putExtra(WearActionReceiver.WEAR_ACTION_CODE, WearActionReceiver.DISMISS_NOTIFICATION);
+
+        PendingIntent pendingIntentDismiss = PendingIntent.getBroadcast(mContext, WEAR_REQUEST_CODE,
+                dismissIntent, PendingIntent.FLAG_UPDATE_CURRENT);
+
+        Intent recalculateIntent = new Intent(WearActionReceiver.WEAR_ACTION);
+        recalculateIntent.putExtra(WearActionReceiver.WEAR_ACTION_CODE, WearActionReceiver.RECALCULATE);
+
+        PendingIntent pendingIntentRecalculate = PendingIntent.getBroadcast(mContext, WEAR_REQUEST_CODE_2,
+                recalculateIntent, PendingIntent.FLAG_UPDATE_CURRENT);
+
+        NotificationCompat.Builder mBuilder = new NotificationCompat.Builder(this)
+                .setSmallIcon(R.drawable.ic_action_call_split)
+                .setContentTitle("RouteBoxer")
+                .setContentText("RouteBoxer has completed the computation process")
+                .addAction(R.mipmap.ic_launcher_round, "Dismiss", pendingIntentDismiss)
+                .addAction(R.mipmap.ic_launcher_round, "Recalculate", pendingIntentRecalculate);
+
+        NotificationManagerCompat notificationManagerCompat =
+                NotificationManagerCompat.from(this);
+        notificationManagerCompat.notify(NOTIFICATION_ID, mBuilder.build());
     }
 
     @Override

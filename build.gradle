@@ -19,6 +19,9 @@ allprojects {
         maven {
             url 'https://dl.bintray.com/aryoxp/douglaspeucker'
         }
+        maven {
+            url "https://maven.google.com"
+        }
     }
 }
 

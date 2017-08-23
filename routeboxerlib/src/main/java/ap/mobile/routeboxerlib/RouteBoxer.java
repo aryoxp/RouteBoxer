@@ -275,7 +275,7 @@ public class RouteBoxer {
                     }
 
                     // if a line exists
-                    /*
+
                     if (l != null) {
                         // find box bounds
                         double bx2 = Math.abs(bx.se.longitude);
@@ -289,7 +289,7 @@ public class RouteBoxer {
                         // if the line intersect with current box, mark it!
                         if (l.intersect(bx.sw, bx.ne)) bx.mark();
                     }
-                    */
+
                 }
             }
         }
