@@ -129,12 +129,14 @@ public class MapsActivity extends AppCompatActivity
 
             @Override
             public void onDismiss() {
-                Toast.makeText(mContext, "Dismissed from Wear", Toast.LENGTH_SHORT).show();
+                NotificationManagerCompat.from(mContext).cancel(NOTIFICATION_ID);
+                //Toast.makeText(mContext, "Dismissed from Wear", Toast.LENGTH_SHORT).show();
             }
 
             @Override
             public void onRecalculate() {
-                Toast.makeText(mContext, "Recalculate from Wear", Toast.LENGTH_SHORT).show();
+                recalculateBox();
+                //Toast.makeText(mContext, "Recalculate from Wear", Toast.LENGTH_SHORT).show();
             }
         };
 
@@ -551,6 +553,10 @@ public class MapsActivity extends AppCompatActivity
 
     @Override
     public void onInfoWindowClick(Marker marker) {
+        this.recalculateBox();
+    }
+
+    private void recalculateBox() {
         if(this.origin != null && this.destination != null) {
             //origin = new LatLng(38.595900, -89.985198);
             //destination = new LatLng(38.506360, -89.984318);
